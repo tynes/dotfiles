@@ -1,1 +1,4 @@
 .DS_Store
+
+# stores history of files changed
+.config/nvim/.netrwhist

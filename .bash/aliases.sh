@@ -1,30 +1,16 @@
 #!/bin/bash
 
+# TODO: test portability across operating systems
+
 # directory traversing
+alias ls='ls -G'
 alias la='ls -a'
+alias ll='ls -l'
+alias lla='ls -la'
 alias l='ls'
 alias ..='cd ..'
 alias c='clear'
 
-# file search
-function f() {
-    find . -iname "*$1*" ${@:=2}
-}
-function r() {
-    grep "$1" ${@:=2} -R .
-}
-
-# mkdir and cd
-function mkcd() { mkdir -p "$@" && cd "$_"; }
-
-# cd and ls
-function cdls() {
-    cd "$@" && ls
-}
-
-# move any amount of directories up
-# usage: u 3
-# move 3 directories upwards
 function u() {
     # TODO - check if int
     if [[ "$#" -eq 1 ]]; then
@@ -33,9 +19,23 @@ function u() {
         done
     else
         echo "usage: u [int]"
+        echo "traverse [int] directories upwards"
     fi
 }
 
+# file search
+function f() {
+    find . -iname "*$1*" ${@:=2}
+}
+function r() {
+    grep "$1" ${@:=2} -R .
+}
+# mkdir and cd
+function mkcd() { mkdir -p "$@" && cd "$_"; }
+# cd and ls
+function cdls() {
+    cd "$@" && ls
+}
 
 # on a mac machine
 if [ `uname` == "Darwin" ]; then
@@ -44,7 +44,6 @@ if [ `uname` == "Darwin" ]; then
 	# the path when it has been installed via homebrew
 	GIT_PATH="/usr/local/Cellar/git/$VERSION/bin/git"
 	if [ -f $GIT_PATH ]; then
-        echo test
 		alias git="$GIT_PATH"
 	fi
 fi
@@ -70,6 +69,7 @@ alias gs='git status'
 
 # bcoin stuff
 function bcoin_help() {
+    # to remember which env vars to use
 	echo "BCOIN_URI"
 	echo "BCOIN_API_KEY"
 }
