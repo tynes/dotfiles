@@ -47,6 +47,7 @@ if [ `uname` == "Darwin" ]; then
 	# TODO: get newest version instead of hardcoding
 	GIT_VERSION=2.17.0
 	# the path when it has been installed via homebrew
+    # TODO: can use `brew --prefix`
 	GIT_PATH="/usr/local/Cellar/git/$VERSION/bin/git"
 	if [ -f $GIT_PATH ]; then
 		alias git="$GIT_PATH"
@@ -80,6 +81,15 @@ alias gc='git commit'
 parse_git_branch() {
      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
 }
+
+# Enable tab completion for `g` by marking it as an alias for `git`
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if type _git &> /dev/null && [ -f `dirname $DIR`/git-completion.bash ]; then
+  complete -o default -o nospace -F _git g;
+fi;
+
+# share current directory on port 8000
+alias webshare='python -m SimpleHTTPServer'
 
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset \
 -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"

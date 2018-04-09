@@ -10,6 +10,7 @@ Plug 'junegunn/fzf.vim'
 
 " autocomplete
 Plug 'roxma/nvim-completion-manager'
+Plug 'roxma/nvim-cm-tern', {'do': 'npm install'}
 
 " sidebar
 Plug 'scrooloose/nerdtree'
