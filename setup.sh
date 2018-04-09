@@ -34,3 +34,9 @@ do
   echo "RUNNING: $CMD"
   eval $CMD
 done
+
+echo "installing vim Plug"
+echo "assuming neovim for installation"
+curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+

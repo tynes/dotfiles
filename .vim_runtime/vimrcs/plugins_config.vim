@@ -1,0 +1,56 @@
+" reference here:
+" https://vimawesome.com/
+" TODO: load plugins specific for certain files
+
+call plug#begin('~/.local/share/nvim/plugged')
+
+" fzf plugin
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
+Plug 'junegunn/fzf.vim'
+
+" autocomplete
+Plug 'roxma/nvim-completion-manager'
+
+" sidebar
+Plug 'scrooloose/nerdtree'
+
+" comment out code easily
+Plug 'chrisbra/vim-commentary'
+
+" solarized color scheme
+Plug 'altercation/vim-colors-solarized'
+
+" full path fuzzy file, buffer, mru, tag
+Plug 'kien/ctrlp.vim'
+
+" show git differences in the gutter
+Plug 'airblade/vim-gitgutter'
+
+" surround
+Plug 'tpope/vim-surround'
+
+" async linting engine
+Plug 'w0rp/ale'
+
+" multiple cursor supprort
+Plug 'terryma/vim-multiple-cursors'
+
+" for javascript
+Plug 'pangloss/vim-javascript'
+
+" for go
+Plug 'fatih/vim-go'
+
+" Initialize plugin system
+call plug#end()
+
+" see whitespace
+Plug 'ntpeters/vim-better-whitespace'
+
+" TODO: modularize out settings from plugin install
+" use prettier for js linting
+autocmd FileType javascript set formatprg=prettier\ --stdin
+" turn on 'ntpeters/vim-better-whitespace'
+let g:better_whitespace_enabled=1
+let g:strip_whitespace_on_save=1
+

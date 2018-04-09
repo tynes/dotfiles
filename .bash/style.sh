@@ -1,4 +1,3 @@
 #!/bin/bash
 
-# add a newline between terminal commands
-PS1="\n$PS1"
+export PS1="\n\u \l [exit \$?] \t\n\w\[$(tput sgr0)\]$(parse_git_branch)\n$ "
