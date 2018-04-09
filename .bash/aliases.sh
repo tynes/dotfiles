@@ -11,6 +11,11 @@ alias l='ls'
 alias ..='cd ..'
 alias c='clear'
 
+# move back up one directory and ls
+function ..l() {
+    cd .. && ls "$@"
+}
+
 function u() {
     # TODO - check if int
     if [[ "$#" -eq 1 ]]; then
@@ -66,6 +71,11 @@ alias dcleanf='dcleanf'
 # git stuff
 alias g='git'
 alias gs='git status'
+alias gp='git pull'
+alias gd='git diff'
+alias gpom='git pull origin master'
+alias ga='git add'
+alias gc='git commit'
 
 # bcoin stuff
 function bcoin_help() {
