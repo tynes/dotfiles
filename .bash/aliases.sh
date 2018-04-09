@@ -77,6 +77,13 @@ alias gpom='git pull origin master'
 alias ga='git add'
 alias gc='git commit'
 
+parse_git_branch() {
+     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+}
+
+alias gl="git log --graph --pretty=format:'%Cred%h%Creset \
+-%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
+
 # bcoin stuff
 function bcoin_help() {
     # to remember which env vars to use
