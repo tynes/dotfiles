@@ -78,9 +78,6 @@ alias gpom='git pull origin master'
 alias ga='git add'
 alias gc='git commit'
 
-parse_git_branch() {
-     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
-}
 
 # Enable tab completion for `g` by marking it as an alias for `git`
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
