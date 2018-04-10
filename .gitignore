@@ -2,3 +2,4 @@
 
 # stores history of files changed
 .config/nvim/.netrwhist
+.config/configstore/update-notifier-npm.json
