@@ -1,57 +1,52 @@
-" reference here:
-" https://vimawesome.com/
-" TODO: load plugins specific for certain files
-
-call plug#begin('~/.local/share/nvim/plugged')
-
-" fzf plugin
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
-Plug 'junegunn/fzf.vim'
-
-" autocomplete
-Plug 'roxma/nvim-completion-manager'
-Plug 'roxma/nvim-cm-tern', {'do': 'npm install'}
-
-" sidebar
-Plug 'scrooloose/nerdtree'
-
-" comment out code easily
-Plug 'chrisbra/vim-commentary'
-
-" solarized color scheme
-Plug 'altercation/vim-colors-solarized'
-
-" full path fuzzy file, buffer, mru, tag
-Plug 'kien/ctrlp.vim'
-
-" show git differences in the gutter
-Plug 'airblade/vim-gitgutter'
-
-" surround
-Plug 'tpope/vim-surround'
-
-" async linting engine
-Plug 'w0rp/ale'
-
-" multiple cursor supprort
-Plug 'terryma/vim-multiple-cursors'
-
-" for javascript
-Plug 'pangloss/vim-javascript'
-
-" for go
-Plug 'fatih/vim-go'
-
-" Initialize plugin system
-call plug#end()
-
-" see whitespace
-Plug 'ntpeters/vim-better-whitespace'
-
-" TODO: modularize out settings from plugin install
 " use prettier for js linting
 autocmd FileType javascript set formatprg=prettier\ --stdin
 " turn on 'ntpeters/vim-better-whitespace'
 let g:better_whitespace_enabled=1
 let g:strip_whitespace_on_save=1
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Nerd Tree
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:NERDTreeWinPos = "right"
+let NERDTreeShowHidden=0
+let NERDTreeIgnore = ['\.pyc$', '__pycache__']
+let g:NERDTreeWinSize=35
+map <leader>nn :NERDTreeToggle<cr>
+map <leader>nb :NERDTreeFromBookmark<Space>
+map <leader>nf :NERDTreeFind<cr>
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => vim-multiple-cursors
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:multi_cursor_next_key="\<C-s>"
+
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => surround.vim config
+" Annotate strings with gettext
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+vmap Si S(i_<esc>f)
+au FileType mako vmap Si S"i${ _(<esc>2f"a) }<esc>
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Vim-go
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:go_fmt_command = "goimports"
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Syntastic (syntax checker)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:ale_linters = {
+\   'javascript': ['jshint'],
+\   'python': ['flake8'],
+\   'go': ['go', 'golint', 'errcheck']
+\}
+
+nmap <silent> <leader>a <Plug>(ale_next_wrap)
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => Git gutter (Git diff)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:gitgutter_enabled=0
+nnoremap <silent> <leader>d :GitGutterToggle<cr>
 
