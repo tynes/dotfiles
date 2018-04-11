@@ -32,6 +32,10 @@ command W w !sudo tee % > /dev/null
 " turn on numbers
 set number
 
+" turn on mouse scrolling
+" TODO: does this only work on mac?
+set mouse=a
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => VIM user interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

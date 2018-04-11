@@ -105,3 +105,39 @@ alias bcoin_help='bcoin_help'
 # kubernetes stuff
 # 😞 one day we will be reunited
 
+# TODO: clean up, add empty response handling, no kubectl handling
+function kube_pf() {
+    if [[ ! -x "$(which fzf 2>/dev/null)" ]]; then
+        echo "please install: github.com/junegunn/fzf" >&2
+        return 1
+    fi
+
+    local selected_pod
+    selected_pod=$( kubectl get po \
+        | grep -v "NAME" | awk '{ print $1 }' \
+        | sort | fzf --select-1 \
+    )
+
+    local selected_container
+    selected_container=$( kubectl get po ${selected_pod} \
+        -o=jsonpath='{..containers[*].name}' | uniq \
+        | sort | tr ' ' '\n' | fzf --select-1 \
+    )
+
+    template="{{- range .spec.containers -}}{{- if eq .name \"${selected_container}\" -}}{{- range .ports -}} {{.containerPort }} {{ end -}}{{- end -}}{{- end -}}"
+
+    local selected_port
+    selected_port=$(kubectl get po ${selected_pod} \
+        -o go-template --template="${template}" \
+        | tr ' ' '\n' | fzf \
+    )
+
+    echo "Port forwarding ${selected_pod}/${selected_container} at port ${selected_port}"
+
+    if [[ ! -z "$selected_port" ]]; then
+        kubectl port-forward ${selected_pod} ${selected_port}
+    fi
+}
+
+alias kube_pf='kube_pf'
+
