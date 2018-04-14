@@ -18,6 +18,7 @@ function ..l() {
 
 function u() {
     # TODO - check if int
+    # TODO: bug - u 0
     if [[ "$#" -eq 1 ]]; then
         for i in `seq "$@"`; do
             cd ..
@@ -42,16 +43,9 @@ function cdls() {
     cd "$@" && ls
 }
 
-# on a mac machine
-if [ `uname` == "Darwin" ]; then
-	# TODO: get newest version instead of hardcoding
-	GIT_VERSION=2.17.0
-	# the path when it has been installed via homebrew
-    # TODO: can use `brew --prefix`
-	GIT_PATH="/usr/local/Cellar/git/$VERSION/bin/git"
-	if [ -f $GIT_PATH ]; then
-		alias git="$GIT_PATH"
-	fi
+# use homebrew git
+if which brew &>/dev/null; then
+    alias git="`brew --prefix`/bin/git"
 fi
 
 # docker stuff
@@ -97,8 +91,10 @@ alias gl="git log --graph --pretty=format:'%Cred%h%Creset \
 # bcoin stuff
 function bcoin_help() {
     # to remember which env vars to use
-	echo "BCOIN_URI"
-	echo "BCOIN_API_KEY"
+    echo "BCOIN_URI"
+    echo "BCOIN_API_KEY"
+
+    echo "node inspect bcoin.js"
 }
 alias bcoin_help='bcoin_help'
 
@@ -141,3 +137,45 @@ function kube_pf() {
 
 alias kube_pf='kube_pf'
 
+function pdir() {
+    local SPLIT='/'
+    local COUNT=`echo "${PWD}" \
+        | awk -F"${SPLIT}" '{print NF-1}'`
+    local cmd
+    local letter_count
+    local half
+    local pad
+    local to_print=""
+    for i in `seq $COUNT`; do
+        extra=""
+        cmd="echo $PWD | cut -f$(($i+1)) -d ""'$SPLIT'"
+        result=`eval $cmd`
+        letter_count=${#result}
+        half=$(($letter_count/2))
+        if [ $(($letter_count%2)) -eq 0 ]; then
+            half=$(($half-1))
+        fi
+        if [[ $(($half+$half+1)) -lt $letter_count ]]; then
+            extra="-"
+        fi
+        # take into account the slash
+        cmd="printf ""'%${half}s' | tr ' ' '-'"
+        pad=`eval $cmd`
+        to_print=${to_print}/${pad}"$(($COUNT-$i))"${extra}${pad}
+    done
+    echo $PWD
+    echo $to_print
+}
+
+# webassembly
+function wasm() {
+    local arg=$1
+    local wasm_dir=${arg:=$HOME/emsdk}
+    if [ -d ${wasm_dir} ]; then
+        pushd $wasm_dir
+        source ./emsdk_env.sh
+        popd
+    else
+        echo "please pass the directory containing emsdk_env.sh"
+    fi
+}
