@@ -4,3 +4,4 @@
 .config/nvim/.netrwhist
 .config/configstore/update-notifier-npm.json
 .config/git/gitk
+.config/htop/htoprc
