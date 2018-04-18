@@ -8,11 +8,14 @@ fi
 
 echo "Creating sym links..."
 
+# sed -e "/.*/d" <-- delete lines that match
+
 FILES=`ls -a | grep "^\." \
   | sed \
       -e "1,2d" \
       -e "/\.git$/d" \
       -e "/\.gitmodules$/d" \
+      -e "/\.gitignore$/d" \
 `
 
 for FILE in $FILES
@@ -35,8 +38,14 @@ do
   eval $CMD
 done
 
-echo "installing vim Plug"
-echo "assuming neovim for installation"
-curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+echo "checking for vim plug..."
+# check to see if plug exists already, install if not
+if [ ! -f $HOME/.local/share/nvim/sit/autoload/plug.vim ]; then
+    echo "not found, installing..."
+    echo "assuming neovim for installation"
+    curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
+        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+else
+    echo "vim plug found, skipping installation"
+fi
 

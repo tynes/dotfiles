@@ -2,6 +2,8 @@
 
 # TODO: test portability across operating systems
 
+alias src='source ~/.bashrc'
+
 # directory traversing
 alias ls='ls -G'
 alias la='ls -a'
@@ -56,6 +58,20 @@ alias dc='docker-compose'
 alias dclean="docker images -f 'dangling=true' | xargs docker rmi"
 alias dcleans="docker ps -a --format='{{.ID}}' | xargs docker rm"
 
+# TODO: do some pretty printing
+function dexec() {
+    local selected_image
+    selected_image=$(docker ps --format='NAME: {{.Names}}, ID: {{.ID}}, IMAGE: {{.Image}}, COMMAND: {{.Command}}, PORTS: {{.Ports}}' | fzf)
+    local id
+    id=$(echo "$selected_image" | cut -f2 -d ',' | cut -f2 -d ':' | tr -d ' ')
+    local cmd
+    local usr_cmd=$1
+    local dcmd=${usr_cmd:=/bin/bash}
+    cmd="docker exec -it ${id} ${dcmd}"
+    echo "running: ${cmd}"
+    eval "$cmd"
+}
+
 # clean up docker environment
 function dcleanf() {
     docker rm -v $(docker ps --filter 'status=exited' -q 2>/dev/null) 2>/dev/null
@@ -88,18 +104,30 @@ alias webshare='python -m SimpleHTTPServer'
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset \
 -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 
-# bcoin stuff
-function bcoin_help() {
-    # to remember which env vars to use
-    echo "BCOIN_URI"
-    echo "BCOIN_API_KEY"
+# openssl
+alias cert='openssl x509 -noout -text -in'
+alias req='openssl req -noout -text -in'
+alias crl='openssl crl -noout -text -in'
+alias ssl='openssl s_client -connect'
 
-    echo "node inspect bcoin.js"
+function valid_key_pair() {
+    # TODO: if not 2 args, print usage
+    local key_hash
+    local cert_hash
+    key_hash=$(openssl rsa -noout -modulus -in "${1}" | openssl md5)
+    cert_hash=$(openssl x509 -noout -modulus -in "${2}" | openssl md5)
+    echo "cert hash: $cert_hash"
+    echo "key hash:  $key_hash"
+    if [ "$cert_hash" == "$key_hash" ]; then
+        echo "matching cert/key pair"
+    else
+        echo "not a pair"
+    fi
 }
-alias bcoin_help='bcoin_help'
 
 # kubernetes stuff
-# 😞 one day we will be reunited
+# 😞
+# one day we will be reunited
 
 # TODO: clean up, add empty response handling, no kubectl handling
 function kube_pf() {
