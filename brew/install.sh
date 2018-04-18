@@ -10,12 +10,13 @@ if [[ ! -f $DIR/$BREW_FILE || ! -f $DIR/$CASK_FILE ]]; then
     exit 1
 fi
 
-# TODO: do any programs have special installs?
-for program in `ls $DIR/BREW_FILE`; do
-    brew install $program
-done
+while read -r program; do
+    echo "installing $program"
+    brew install "$program"
+done < "$DIR/$BREW_FILE"
 
-for cask_program in `ls $DIR/CASK_FILE`; do
-    brew cask install $cask_program
-done
+while read -r program; do
+    echo "installing $program"
+    brew cask install "$program"
+done < "$DIR/$CASK_FILE"
 
