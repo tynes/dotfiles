@@ -207,3 +207,6 @@ function wasm() {
         echo "please pass the directory containing emsdk_env.sh"
     fi
 }
+
+# jump
+[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
