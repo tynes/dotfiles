@@ -19,15 +19,11 @@ function ..l() {
 }
 
 function u() {
-    # TODO - check if int
-    # TODO: bug - u 0
-    if [[ "$#" -eq 1 ]]; then
-        for i in `seq "$@"`; do
+    [  "$#" -ne 1 ] && echo "usage: u [int] - traverse directories upwards"
+    if [[ "$1" -gt 0 ]]; then
+        for i in $(seq "$@"); do
             cd ..
         done
-    else
-        echo "usage: u [int]"
-        echo "traverse [int] directories upwards"
     fi
 }
 
@@ -65,8 +61,7 @@ function dexec() {
     local id
     id=$(echo "$selected_image" | cut -f2 -d ',' | cut -f2 -d ':' | tr -d ' ')
     local cmd
-    local usr_cmd=$1
-    local dcmd=${usr_cmd:=/bin/bash}
+    local dcmd=${1:=/bin/bash}
     cmd="docker exec -it ${id} ${dcmd}"
     echo "running: ${cmd}"
     eval "$cmd"
@@ -167,17 +162,18 @@ alias kube_pf='kube_pf'
 
 function pdir() {
     local SPLIT='/'
-    local COUNT=`echo "${PWD}" \
-        | awk -F"${SPLIT}" '{print NF-1}'`
+    local COUNT
+    COUNT=$(echo "${PWD}" \
+        | awk -F"${SPLIT}" '{print NF-1}')
     local cmd
     local letter_count
     local half
     local pad
     local to_print=""
-    for i in `seq $COUNT`; do
+    for i in $(seq $COUNT); do
         extra=""
         cmd="echo $PWD | cut -f$(($i+1)) -d ""'$SPLIT'"
-        result=`eval $cmd`
+        result=$(eval $cmd)
         letter_count=${#result}
         half=$(($letter_count/2))
         if [ $(($letter_count%2)) -eq 0 ]; then
@@ -188,21 +184,21 @@ function pdir() {
         fi
         # take into account the slash
         cmd="printf ""'%${half}s' | tr ' ' '-'"
-        pad=`eval $cmd`
+        pad=$(eval $cmd)
         to_print=${to_print}/${pad}"$(($COUNT-$i))"${extra}${pad}
     done
-    echo $PWD
-    echo $to_print
+    echo "$PWD"
+    echo "$to_print"
 }
 
 # webassembly
 function wasm() {
     local arg=$1
     local wasm_dir=${arg:=$HOME/emsdk}
-    if [ -d ${wasm_dir} ]; then
-        pushd $wasm_dir
+    if [ -d "${wasm_dir}" ]; then
+        pushd "$wasm_dir" >/dev/null
         source ./emsdk_env.sh
-        popd
+        popd >/dev/null
     else
         echo "please pass the directory containing emsdk_env.sh"
     fi

@@ -8,3 +8,4 @@ export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 
 # maybe a mac only thing?
 export PATH="$PATH:/usr/local/sbin"
+
