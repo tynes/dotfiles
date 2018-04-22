@@ -121,6 +121,7 @@ if $COLORTERM == 'gnome-terminal'
 endif
 
 try
+    " orange font
     colorscheme desert
 catch
 endtry
@@ -135,12 +136,28 @@ if has("gui_running")
     set guitablabel=%M\ %t
 endif
 
+" taken from https://neovim.io/doc/user/term.html
+if $TERM =~ '^\(rxvt\|screen\|interix\|putty\)\(-.*\)\?$'
+    set notermguicolors
+elseif $TERM =~ '^\(tmux\|iterm\|vte\|gnome\)\(-.*\)\?$'
+    set termguicolors
+elseif $TERM =~ '^\(xterm\)\(-.*\)\?$'
+    if $XTERM_VERSION != ''
+        set termguicolors
+    elseif $KONSOLE_PROFILE_NAME != ''
+        set termguicolors
+    elseif $VTE_VERSION != ''
+        set termguicolors
+    else
+        set notermguicolors
+    endif
+endif
+
 " Set utf8 as standard encoding and en_US as the standard language
 set encoding=utf8
 
 " Use Unix as the standard file type
 set ffs=unix,dos,mac
-
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Files, backups and undo

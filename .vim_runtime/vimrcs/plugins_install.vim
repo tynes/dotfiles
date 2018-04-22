@@ -1,6 +1,7 @@
 " reference here:
 " https://vimawesome.com/
 " TODO: load plugins specific for certain files
+"
 
 call plug#begin('~/.local/share/nvim/plugged')
 
