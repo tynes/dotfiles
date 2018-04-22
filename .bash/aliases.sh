@@ -67,6 +67,13 @@ function dexec() {
     eval "$cmd"
 }
 
+function dif() {
+    [[ "$#" -ne 1 ]] && printf "usage:\n$ dif <regex>\n"; return 1;
+    local cmd
+    cmd="--filter=reference=$1"
+    docker images $cmd
+}
+
 # clean up docker environment
 function dcleanf() {
     docker rm -v $(docker ps --filter 'status=exited' -q 2>/dev/null) 2>/dev/null
@@ -206,3 +213,13 @@ function wasm() {
 
 # jump
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+
+function myip() {
+    local ipv4
+    local ipv6
+    ipv4=$(dig +short myip.opendns.com @resolver1.opendns.com)
+    ipv6=$(dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | tr -d '"')
+    echo "ipv4: ${ipv4:="not found"}"
+    echo "ipv6: ${ipv6:="not found"}"
+}
+
