@@ -4,7 +4,7 @@ node_debug() {
 	local URL
 	local DEBUG_SERVER='http://127.0.0.1:9229/json/list'
 	URL=$(curl -s "$DEBUG_SERVER" | jq .[0].devtoolsFrontendUrl | tr -d '"')
-	if [[ $URL -ne "" ]]; then
+	if [[ ! "$URL" == "" ]]; then
 		if [ `uname` == "Darwin" ]; then
 			echo "Copying $URL to clipboard"
 			echo $URL | pbcopy
@@ -17,4 +17,4 @@ node_debug() {
 }
 
 alias node_debug='node_debug'
- 
+

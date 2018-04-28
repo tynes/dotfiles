@@ -223,3 +223,14 @@ function myip() {
     echo "ipv6: ${ipv6:="not found"}"
 }
 
+# TODO: duration api
+function prc() {
+    local coin
+    local base
+    coin=$(echo $1 | cut -d '/' -f 1)
+    base=$(echo $1 | grep '/' | cut -d '/' -f 2)
+    base=${base:=usd}
+    curl "$base.rate.sx/$coin"
+}
+
+alias weather='diff -Naur <(curl -s http://wttr.in/sf ) <(curl -s http://wttr.in/binghamton )'
