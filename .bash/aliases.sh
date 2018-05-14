@@ -13,6 +13,12 @@ alias l='ls'
 alias ..='cd ..'
 alias c='clear'
 
+# neovim
+alias e='nvim'
+
+# TODO: harden for non mac
+alias pwdcp='pwd | pbcopy'
+
 # move back up one directory and ls
 function ..l() {
     cd .. && ls "$@"
@@ -61,16 +67,18 @@ function dexec() {
     local id
     id=$(echo "$selected_image" | cut -f2 -d ',' | cut -f2 -d ':' | tr -d ' ')
     local cmd
-    local dcmd=${1:=/bin/bash}
+    local dcmd=${1:-/bin/bash}
     cmd="docker exec -it ${id} ${dcmd}"
     echo "running: ${cmd}"
     eval "$cmd"
 }
 
+# TODO: doesn't work with passing along other docker opts
 function dif() {
-    [[ "$#" -ne 1 ]] && printf "usage:\n$ dif <regex>\n"; return 1;
+    [[ "$#" -ne 1 ]] && printf "usage:\n$ dif <regex>\n" && return 1;
     local cmd
     cmd="--filter=reference=$1"
+    echo "docker images $cmd"
     docker images $cmd
 }
 
@@ -211,9 +219,12 @@ function wasm() {
     fi
 }
 
+# TODO: remove if not useful
 # jump
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 
+# TODO: this doesn't always work...
+# use ip addr show
 function myip() {
     local ipv4
     local ipv6
