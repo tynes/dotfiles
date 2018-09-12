@@ -29,3 +29,11 @@ export LESS='-R -C -M -I -j 10 -# 4'
 # -I - ignore casing in search
 # -j 10 - display search results in line 10
 # -# 4 - move 4 characters left/right on arrow key press
+
+# source bash completions
+if [ -d /usr/local/etc/bash_completion.d ]; then
+    for filename in /usr/local/etc/bash_completion.d/*; do
+        [ -e "$filename" ] || continue
+        source "$filename"
+    done
+fi

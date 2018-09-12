@@ -11,11 +11,3 @@ function chmod_help() {
     echo "-rw-rw-rw-	0666	read & write"
     echo "-rwxr-----	0740	owner can read, write, & execute; group can only read; others have no permissions"
 }
-
-function bcoin_help() {
-    # to remember which env vars to use
-    echo "BCOIN_URI"
-    echo "BCOIN_API_KEY"
-    echo "node inspect bcoin.js"
-}
-alias bcoin_help='bcoin_help'
