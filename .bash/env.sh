@@ -9,16 +9,24 @@ export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 # maybe a mac only thing?
 export PATH="$PATH:/usr/local/sbin"
 
-# ledger pgp signing
-# TODO: if HOME/Library exists, add this to PATH
-export PATH="$PATH/:$HOME/Library/Python/3.6/bin"
+# ledger pgp signing on mac
+if [ -d "$HOME/Library/Python/3.6/bin" ]; then
+    export PATH="$PATH:$HOME/Library/Python/3.6/bin"
+fi
 
+# ledger pgp signing on linux
+if [ -d "$HOME/.local/bin" ]; then
+    export PATH="$PATH:$HOME/.local/bin"
+fi
+
+# TODO: don't default to ledger
 # default to using ledger
 export GNUPGHOME=~/.gnupg/ledger
 
 function gpghome() {
     selection=$(echo "$HOME/.gnupg/ledger
-$HOME/.gnupg" | fzf)
+$HOME/.gnupg
+$HOME/.gnupg/trezor" | fzf)
     export GNUPGHOME="$selection"
 }
 
