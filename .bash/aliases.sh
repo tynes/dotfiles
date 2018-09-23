@@ -4,8 +4,14 @@
 
 alias src='source ~/.bashrc'
 
-# directory traversing
-alias ls='ls -G'
+# make assumption of installed program based on OS
+if [[ "$(uname -s)" == 'Linux' ]]; then
+    # gnu ls
+    alias ls='ls --color'
+else
+    # bsd ls
+    alias ls='ls -G'
+fi
 alias la='ls -a'
 alias ll='ls -l'
 alias lla='ls -la'
