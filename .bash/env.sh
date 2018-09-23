@@ -21,6 +21,7 @@ fi
 
 # TODO: don't default to ledger
 # default to using ledger
+# test commit
 export GNUPGHOME=~/.gnupg/ledger
 
 function gpghome() {
