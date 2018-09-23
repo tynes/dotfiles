@@ -1,24 +1,33 @@
 #!/bin/bash
 
+# ROOT_DIR is home directory when ~/dotfiles
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR=$(dirname $DIR)
 
-# TODO - does this override native things?
+# TODO - side effects?
 export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 
 # maybe a mac only thing?
 export PATH="$PATH:/usr/local/sbin"
 
-# ledger pgp signing
-# TODO: if HOME/Library exists, add this to PATH
-export PATH="$PATH/:$HOME/Library/Python/3.6/bin"
+# hardware gpg signing on mac
+if [ -d "$HOME/Library/Python/3.6/bin" ]; then
+    export PATH="$PATH:$HOME/Library/Python/3.6/bin"
+fi
 
-# default to using ledger
+# hardware gpg signing on linux
+if [ -d "$HOME/.local/bin" ]; then
+    export PATH="$PATH:$HOME/.local/bin"
+fi
+
+# TODO: don't default to ledger
+# currently default to using ledger
 export GNUPGHOME=~/.gnupg/ledger
 
 function gpghome() {
     selection=$(echo "$HOME/.gnupg/ledger
-$HOME/.gnupg" | fzf)
+$HOME/.gnupg
+$HOME/.gnupg/trezor" | fzf)
     export GNUPGHOME="$selection"
 }
 
