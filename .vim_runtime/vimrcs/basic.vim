@@ -36,6 +36,9 @@ set number
 " TODO: does this only work on mac?
 set mouse=a
 
+" turn of auto folding
+set nofoldenable
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => VIM user interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

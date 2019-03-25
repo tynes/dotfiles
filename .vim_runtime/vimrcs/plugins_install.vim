@@ -10,11 +10,18 @@ Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
 Plug 'junegunn/fzf.vim'
 
 " autocomplete
-Plug 'roxma/nvim-completion-manager'
-Plug 'roxma/nvim-cm-tern', {'do': 'npm install'}
+Plug 'ncm2/ncm2'
+Plug 'roxma/nvim-yarp'
+
+" enable ncm2 for all buffers
+autocmd BufEnter * call ncm2#enable_for_buffer()
+
+Plug 'ncm2/ncm2-bufword'
+Plug 'ncm2/ncm2-path'
+Plug 'ncm2/ncm2-syntax' | Plug 'Shougo/neco-syntax'
 
 " sidebar
-Plug 'scrooloose/nerdtree'
+Plug 'scrooloose/nerdtree', { 'branch': 'master' }
 
 " comment out code easily
 Plug 'chrisbra/vim-commentary'
