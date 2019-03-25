@@ -19,6 +19,12 @@ alias l='ls'
 alias ..='cd ..'
 alias c='clear'
 
+# useful for renaming strings in a file
+# usage $ rdir file target_string replacement_string
+function rdir() {
+    find $1 -type f -exec sed -i '' "s#$2#$3#" {} \;
+}
+
 # neovim
 alias e='nvim'
 
