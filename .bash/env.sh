@@ -9,6 +9,7 @@ export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 
 # maybe a mac only thing?
 export PATH="$PATH:/usr/local/sbin"
+export PATH="$PATH:$HOME/.cargo/bin"
 
 # hardware gpg signing on mac
 if [ -d "$HOME/Library/Python/3.6/bin" ]; then
