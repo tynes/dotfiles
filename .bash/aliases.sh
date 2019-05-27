@@ -25,6 +25,11 @@ function rdir() {
     find $1 -type f -exec sed -i '' "s#$2#$3#" {} \;
 }
 
+# load file into repl like python -i
+function nodei() {
+    node -i -e "$(< $1 )"
+}
+
 # neovim
 alias e='nvim'
 
