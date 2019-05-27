@@ -48,7 +48,7 @@ Plug 'terryma/vim-multiple-cursors'
 Plug 'pangloss/vim-javascript'
 
 " for go
-Plug 'fatih/vim-go'
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 
 " Initialize plugin system
 call plug#end()

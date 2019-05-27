@@ -48,6 +48,10 @@ function! JavaScriptFold()
     setl foldtext=FoldText()
 endfunction
 
+""""""""""""""""""""""""""""""
+" => Go section
+""""""""""""""""""""""""""""""
+let g:go_fmt_command = "goimports"
 
 """"""""""""""""""""""""""""""
 " => git section
