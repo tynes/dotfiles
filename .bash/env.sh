@@ -9,14 +9,28 @@ export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 
 # maybe a mac only thing?
 export PATH="$PATH:/usr/local/sbin"
-export PATH="$PATH:$HOME/.cargo/bin"
 
-# hardware gpg signing on mac
+# rust executables
+if [ -d "$HOME/.cargo/bin" ]; then
+    export PATH="$PATH:$HOME/.cargo/bin"
+fi
+
+# ruby executables
+if [ -d "$HOME/.gem/ruby/2.7.0" ]; then
+    export PATH="$PATH:$HOME/.gem/ruby/2.7.0/bin"
+fi
+
+# add linuxbrew to path if installed at default location
+if [ -d "/home/linuxbrew/.linuxbrew" ]; then
+    export PATH="$PATH:/home/linuxbrew/.linuxbrew/bin"
+fi
+
+# hardware gpg signing on mac for local user
 if [ -d "$HOME/Library/Python/3.6/bin" ]; then
     export PATH="$PATH:$HOME/Library/Python/3.6/bin"
 fi
 
-# hardware gpg signing on linux
+# hardware gpg signing on linux for local user
 if [ -d "$HOME/.local/bin" ]; then
     export PATH="$PATH:$HOME/.local/bin"
 fi
