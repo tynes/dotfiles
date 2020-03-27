@@ -115,6 +115,7 @@ alias gpom='git pull origin master'
 alias ga='git add'
 alias gc='git commit'
 
+alias prettypath='tr ":" "\n" <<< "$PATH"'
 
 # Enable tab completion for `g` by marking it as an alias for `git`
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
