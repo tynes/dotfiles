@@ -4,7 +4,6 @@ autocmd FileType javascript set formatprg=prettier\ --stdin
 let g:better_whitespace_enabled=1
 let g:strip_whitespace_on_save=1
 
-
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Nerd Tree
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -21,6 +20,23 @@ map <leader>nf :NERDTreeFind<cr>
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 let g:multi_cursor_next_key="\<C-s>"
 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => LanguageClient neovim
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Required for operations modifying multiple buffers like rename.
+set hidden
+
+let g:LanguageClient_serverCommands = {
+    \ 'rust': ['rustup', 'run', 'nightly', 'rls'],
+    \ }
+
+" Automatically start language servers.
+let g:LanguageClient_autoStart = 1
+
+" Maps K to hover, gd to goto definition, F2 to rename
+nnoremap <silent> K :call LanguageClient_textDocument_hover()
+nnoremap <silent> gd :call LanguageClient_textDocument_definition()
+nnoremap <silent> <F2> :call LanguageClient_textDocument_rename()
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => surround.vim config

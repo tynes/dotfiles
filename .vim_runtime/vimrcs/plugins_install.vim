@@ -50,8 +50,18 @@ Plug 'pangloss/vim-javascript'
 " for go
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 
-" Initialize plugin system
-call plug#end()
+" for python
+Plug 'hdima/python-syntax'
+
+" language server support
+Plug 'autozimu/LanguageClient-neovim', {
+    \ 'branch': 'next',
+    \ 'do': 'bash install.sh',
+    \ }
 
 " see whitespace
 Plug 'ntpeters/vim-better-whitespace'
+
+" Initialize plugin system
+call plug#end()
+
