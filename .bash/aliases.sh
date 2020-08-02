@@ -4,6 +4,8 @@
 
 alias src='source ~/.bashrc'
 
+alias hdig='dig @127.0.0.1 -p 5350'
+
 # make assumption of installed program based on OS
 if [[ "$(uname -s)" == 'Linux' ]]; then
     # gnu ls

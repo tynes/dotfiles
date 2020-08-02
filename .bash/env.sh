@@ -7,6 +7,11 @@ ROOT_DIR=$(dirname $DIR)
 # TODO - side effects?
 export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 
+
+if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then
+    . $HOME/.nix-profile/etc/profile.d/nix.sh
+fi # added by Nix installer
+
 # maybe a mac only thing?
 export PATH="$PATH:/usr/local/sbin"
 
@@ -18,11 +23,6 @@ fi
 # ruby executables
 if [ -d "$HOME/.gem/ruby/2.7.0" ]; then
     export PATH="$PATH:$HOME/.gem/ruby/2.7.0/bin"
-fi
-
-# add linuxbrew to path if installed at default location
-if [ -d "/home/linuxbrew/.linuxbrew" ]; then
-    export PATH="$PATH:/home/linuxbrew/.linuxbrew/bin"
 fi
 
 # hardware gpg signing on mac for local user
