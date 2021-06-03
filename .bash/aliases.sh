@@ -1,10 +1,9 @@
 #!/bin/bash
 
 # TODO: test portability across operating systems
-
 alias src='source ~/.bashrc'
 
-alias hdig='dig @127.0.0.1 -p 5350'
+alias aws='docker run --rm -ti -v ~/.aws:/root/.aws amazon/aws-cli'
 
 # make assumption of installed program based on OS
 if [[ "$(uname -s)" == 'Linux' ]]; then
@@ -156,8 +155,7 @@ function valid_key_pair() {
 }
 
 # kubernetes stuff
-# 😞
-# one day we will be reunited
+alias k='kubectl'
 
 # TODO: clean up, add empty response handling, no kubectl handling
 function kube_pf() {
