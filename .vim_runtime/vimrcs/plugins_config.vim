@@ -49,6 +49,18 @@ au FileType mako vmap Si S"i${ _(<esc>2f"a) }<esc>
 " => Vim-go
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 let g:go_fmt_command = "goimports"
+let g:go_gopls_enabled = 1
+let g:go_gopls_matcher = 'fuzzy'
+" TODO: figure out how to get signs from go vet
+" https://github.com/vim-syntastic/syntastic
+" to show up on the side. for now underline things
+let g:go_diagnostics_level = 3
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => deoplete
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:deoplete#enable_at_startup = 1
+"call deoplete#custom#option('omni_patterns', { 'go': '[^. *\t]\.\w*' })
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Syntastic (syntax checker)
@@ -93,13 +105,13 @@ inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 " add 180ms delay before the omni wrapper:
 "  'on_complete': ['ncm2#on_complete#delay', 180,
 "               \ 'ncm2#on_complete#omni', 'csscomplete#CompleteCSS'],
-au User Ncm2Plugin call ncm2#register_source({
-        \ 'name' : 'css',
-        \ 'priority': 9,
-        \ 'subscope_enable': 1,
-        \ 'scope': ['css','scss'],
-        \ 'mark': 'css',
-        \ 'word_pattern': '[\w\-]+',
-        \ 'complete_pattern': ':\s*',
-        \ 'on_complete': ['ncm2#on_complete#omni', 'csscomplete#CompleteCSS'],
-        \ })
+"au User Ncm2Plugin call ncm2#register_source({
+"        \ 'name' : 'css',
+"        \ 'priority': 9,
+"        \ 'subscope_enable': 1,
+"        \ 'scope': ['css','scss'],
+"        \ 'mark': 'css',
+"        \ 'word_pattern': '[\w\-]+',
+"        \ 'complete_pattern': ':\s*',
+"        \ 'on_complete': ['ncm2#on_complete#omni', 'csscomplete#CompleteCSS'],
+"        \ })

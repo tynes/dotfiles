@@ -10,15 +10,22 @@ Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
 Plug 'junegunn/fzf.vim'
 
 " autocomplete
-Plug 'ncm2/ncm2'
-Plug 'roxma/nvim-yarp'
-
+" Plug 'ncm2/ncm2'
+" Plug 'roxma/nvim-yarp'
 " enable ncm2 for all buffers
-autocmd BufEnter * call ncm2#enable_for_buffer()
+" autocmd BufEnter * call ncm2#enable_for_buffer()
 
 Plug 'ncm2/ncm2-bufword'
 Plug 'ncm2/ncm2-path'
 Plug 'ncm2/ncm2-syntax' | Plug 'Shougo/neco-syntax'
+
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+else
+  Plug 'Shougo/deoplete.nvim'
+  Plug 'roxma/nvim-yarp'
+  Plug 'roxma/vim-hug-neovim-rpc'
+endif
 
 " sidebar
 Plug 'scrooloose/nerdtree', { 'branch': 'master' }
@@ -47,6 +54,10 @@ Plug 'terryma/vim-multiple-cursors'
 " for javascript
 Plug 'pangloss/vim-javascript'
 
+" for typescript
+Plug 'HerringtonDarkholme/yats.vim'
+Plug 'mhartington/nvim-typescript', {'do': './install.sh'}
+
 " for go
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 
@@ -61,6 +72,9 @@ Plug 'autozimu/LanguageClient-neovim', {
 
 " see whitespace
 Plug 'ntpeters/vim-better-whitespace'
+
+" solidity syntax
+Plug 'tomlion/vim-solidity'
 
 " Initialize plugin system
 call plug#end()
