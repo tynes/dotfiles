@@ -12,8 +12,8 @@ if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then
     . $HOME/.nix-profile/etc/profile.d/nix.sh
 fi # added by Nix installer
 
-# maybe a mac only thing?
-export PATH="$PATH:/usr/local/sbin"
+# documented default go install path
+export PATH="$PATH:/usr/local/bin/go"
 
 # rust executables
 if [ -d "$HOME/.cargo/bin" ]; then
