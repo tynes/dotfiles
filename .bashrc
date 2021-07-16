@@ -15,3 +15,5 @@ if [ -f "$HOME/Projects/google-cloud-sdk/completion.bash.inc" ]; then . "$HOME/P
 if [ -f "$HOME/.cargo/env" ]; then
     . "$HOME/.cargo/env"
 fi
+
+if [ -e /home/tynes/.nix-profile/etc/profile.d/nix.sh ]; then . /home/tynes/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
