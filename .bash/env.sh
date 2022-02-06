@@ -4,20 +4,25 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR=$(dirname $DIR)
 
+
+# nix installer seems to add ~/.nix-profile to the $PATH
+# many times...
+# if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then
+# source $HOME/.nix-profile/etc/profile.d/nix.sh
+# fi
+
+# TODO: only if nvim exists
+EDITOR=nvim
+
 # TODO - side effects?
 export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 
-
-if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then
-    . $HOME/.nix-profile/etc/profile.d/nix.sh
-fi # added by Nix installer
-
-# documented default go install path
-export PATH="$PATH:/usr/local/bin/go"
+GOPATH=$HOME/go
+PATH=$PATH:$GOPATH/bin
 
 # rust executables
 if [ -d "$HOME/.cargo/bin" ]; then
-    export PATH="$PATH:$HOME/.cargo/bin"
+    PATH="$HOME/.cargo/bin:$PATH"
 fi
 
 # ruby executables
@@ -61,3 +66,5 @@ if [ -d /usr/local/etc/bash_completion.d ]; then
         source "$filename"
     done
 fi
+
+

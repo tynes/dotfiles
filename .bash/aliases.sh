@@ -1,9 +1,17 @@
 #!/bin/bash
 
-# TODO: test portability across operating systems
-alias src='source ~/.bashrc'
+function src() {
+    source ~/.bashrc
+}
 
 alias aws='docker run --rm -ti -v ~/.aws:/root/.aws amazon/aws-cli'
+
+if [[ "$(uname -s)" == 'Linux' ]]; then
+    alias open='xdg-open'
+fi
+
+alias psg='ps -ef | grep -i $1'
+alias nsg='netstat -natp | grep -i $1'
 
 # make assumption of installed program based on OS
 if [[ "$(uname -s)" == 'Linux' ]]; then
@@ -224,19 +232,6 @@ function pdir() {
     echo "$to_print"
 }
 
-# webassembly
-function wasm() {
-    local arg=$1
-    local wasm_dir=${arg:=$HOME/emsdk}
-    if [ -d "${wasm_dir}" ]; then
-        pushd "$wasm_dir" >/dev/null
-        source ./emsdk_env.sh
-        popd >/dev/null
-    else
-        echo "please pass the directory containing emsdk_env.sh"
-    fi
-}
-
 # TODO: remove if not useful
 # jump
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
@@ -251,15 +246,3 @@ function myip() {
     echo "ipv4: ${ipv4:="not found"}"
     echo "ipv6: ${ipv6:="not found"}"
 }
-
-# TODO: duration api
-function prc() {
-    local coin
-    local base
-    coin=$(echo $1 | cut -d '/' -f 1)
-    base=$(echo $1 | grep '/' | cut -d '/' -f 2)
-    base=${base:=usd}
-    curl "$base.rate.sx/$coin"
-}
-
-alias weather='diff -Naur <(curl -s http://wttr.in/sf ) <(curl -s http://wttr.in/binghamton )'

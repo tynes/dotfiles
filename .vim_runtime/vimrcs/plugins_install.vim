@@ -42,9 +42,6 @@ Plug 'kien/ctrlp.vim'
 " show git differences in the gutter
 Plug 'airblade/vim-gitgutter'
 
-" surround
-Plug 'tpope/vim-surround'
-
 " async linting engine
 Plug 'w0rp/ale'
 
@@ -56,7 +53,6 @@ Plug 'pangloss/vim-javascript'
 
 " for typescript
 Plug 'HerringtonDarkholme/yats.vim'
-Plug 'mhartington/nvim-typescript', {'do': './install.sh'}
 
 " for go
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
