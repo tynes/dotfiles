@@ -1,5 +1,6 @@
 " use prettier for js linting
 autocmd FileType javascript set formatprg=prettier\ --stdin
+
 " turn on 'ntpeters/vim-better-whitespace'
 let g:better_whitespace_enabled=1
 let g:strip_whitespace_on_save=1
@@ -15,23 +16,8 @@ map <leader>nn :NERDTreeToggle<cr>
 map <leader>nb :NERDTreeFromBookmark<Space>
 map <leader>nf :NERDTreeFind<cr>
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" => vim-multiple-cursors
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-let g:multi_cursor_next_key="\<C-s>"
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" => LanguageClient neovim
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Required for operations modifying multiple buffers like rename.
 set hidden
-
-let g:LanguageClient_serverCommands = {
-    \ 'rust': ['rustup', 'run', 'nightly', 'rls'],
-    \ }
-
-" Automatically start language servers.
-let g:LanguageClient_autoStart = 1
 
 " Maps K to hover, gd to goto definition, F2 to rename
 nnoremap <silent> K :call LanguageClient_textDocument_hover()
@@ -60,13 +46,12 @@ let g:go_diagnostics_level = 3
 " => deoplete
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 let g:deoplete#enable_at_startup = 1
-"call deoplete#custom#option('omni_patterns', { 'go': '[^. *\t]\.\w*' })
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Syntastic (syntax checker)
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 let g:ale_linters = {
-\   'javascript': ['jshint'],
+\   'javascript': ['prettier'],
 \   'python': ['flake8'],
 \   'go': ['go', 'golint', 'errcheck']
 \}
@@ -99,19 +84,14 @@ inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
 inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
 inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 
-" wrap existing omnifunc
-" Note that omnifunc does not run in background and may probably block the
-" editor. If you don't want to be blocked by omnifunc too often, you could
-" add 180ms delay before the omni wrapper:
-"  'on_complete': ['ncm2#on_complete#delay', 180,
-"               \ 'ncm2#on_complete#omni', 'csscomplete#CompleteCSS'],
-"au User Ncm2Plugin call ncm2#register_source({
-"        \ 'name' : 'css',
-"        \ 'priority': 9,
-"        \ 'subscope_enable': 1,
-"        \ 'scope': ['css','scss'],
-"        \ 'mark': 'css',
-"        \ 'word_pattern': '[\w\-]+',
-"        \ 'complete_pattern': ':\s*',
-"        \ 'on_complete': ['ncm2#on_complete#omni', 'csscomplete#CompleteCSS'],
-"        \ })
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" => lazygit.nvim
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let g:lazygit_floating_window_winblend = 0 " transparency of floating window
+let g:lazygit_floating_window_scaling_factor = 0.9 " scaling factor for floating window
+let g:lazygit_floating_window_corner_chars = ['╭', '╮', '╰', '╯'] " customize lazygit popup window corner characters
+let g:lazygit_floating_window_use_plenary = 0 " use plenary.nvim to manage floating window if available
+let g:lazygit_use_neovim_remote = 0
+
+nnoremap <silent> <leader>g :LazyGit<CR>
