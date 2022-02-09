@@ -40,7 +40,7 @@ au FileType javascript setl fen
 au FileType javascript setl nocindent
 
 autocmd Filetype javascript setlocal ts=2 sts=2 sw=2
-autocmd FileType *.ts setlocal ts=2 sts=2 sw=2
+autocmd FileType typescript setlocal ts=2 sts=2 sw=2
 
 au FileType javascript imap <c-t> $log();<esc>hi
 au FileType javascript imap <c-a> alert();<esc>hi
