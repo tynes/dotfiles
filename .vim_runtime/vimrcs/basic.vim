@@ -15,6 +15,9 @@ set history=500
 filetype plugin on
 filetype indent on
 
+" popup menu is gray
+autocmd ColorScheme * hi Pmenu ctermbg=gray guibg=gray
+
 " Set to auto read when a file is changed from the outside
 set autoread
 
