@@ -4,6 +4,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR=$(dirname $DIR)
 
+# import foundry tooling
+export PATH="$PATH:/home/tynes/.foundry/bin"
 
 # nix installer seems to add ~/.nix-profile to the $PATH
 # many times...
