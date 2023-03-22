@@ -123,6 +123,7 @@ alias gd='git diff'
 alias gpom='git pull origin master'
 alias ga='git add'
 alias gc='git commit'
+alias gco='git checkout'
 
 alias prettypath='tr ":" "\n" <<< "$PATH"'
 

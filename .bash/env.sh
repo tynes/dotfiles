@@ -5,13 +5,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR=$(dirname $DIR)
 
 # import foundry tooling
-export PATH="$PATH:/home/tynes/.foundry/bin"
-
-# nix installer seems to add ~/.nix-profile to the $PATH
-# many times...
-# if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then
-# source $HOME/.nix-profile/etc/profile.d/nix.sh
-# fi
+if [ -d "$HOME/.foundry/bin" ]; then
+    export PATH="$PATH:$HOME/.foundry/bin"
+fi
 
 # TODO: only if nvim exists
 EDITOR=nvim
@@ -30,11 +26,6 @@ fi
 # ruby executables
 if [ -d "$HOME/.gem/ruby/2.7.0" ]; then
     export PATH="$PATH:$HOME/.gem/ruby/2.7.0/bin"
-fi
-
-# hardware gpg signing on mac for local user
-if [ -d "$HOME/Library/Python/3.6/bin" ]; then
-    export PATH="$PATH:$HOME/Library/Python/3.6/bin"
 fi
 
 # hardware gpg signing on linux for local user
@@ -69,4 +60,7 @@ if [ -d /usr/local/etc/bash_completion.d ]; then
     done
 fi
 
+if [ -f /usr/share/fzf/key-bindings.bash ]; then
+    source /usr/share/fzf/key-bindings.bash
+fi
 
