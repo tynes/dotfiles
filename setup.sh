@@ -8,14 +8,15 @@ fi
 
 echo "Creating sym links..."
 
-# sed -e "/.*/d" <-- delete lines that match
-
+# Get all of the files and use `sed -e` to delete
+# lines that match the argument
 FILES=`ls -a | grep "^\." \
   | sed \
       -e "1,2d" \
       -e "/\.git$/d" \
       -e "/\.gitmodules$/d" \
       -e "/\.gitignore$/d" \
+  | grep -v user
 `
 
 for FILE in $FILES
@@ -38,14 +39,18 @@ do
   eval $CMD
 done
 
-echo "checking for vim plug..."
-# check to see if plug exists already, install if not
-if [ ! -f $HOME/.local/share/nvim/sit/autoload/plug.vim ]; then
-    echo "not found, installing..."
-    echo "assuming neovim for installation"
-    curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
-        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-else
-    echo "vim plug found, skipping installation"
+# TODO: everything below here is untested.
+NVIM_CONFIG=$HOME/.config/nvim
+USER_NVIM_CONFIG=$NVIM_CONFIG/lua/user
+if [ ! -f $HOME/.config/nvim/init.lua ]; then
+  echo "Installing AstroNvim"
+  git clone --depth 1 https://github.com/AstroNvim/AstroNvim $NVIM_CONFIG
 fi
 
+if [[ -L $USER_NVIM_CONFIG ]]; then
+  unlink $USER_NVIM_CONFIG
+fi
+
+CMD="ln -sf $PWD/astro $USER_NVIM_CONFIG"
+echo "RUNNING: $CMD"
+eval $CMD
