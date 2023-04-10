@@ -6,17 +6,14 @@ ROOT_DIR=$(dirname $DIR)
 
 # import foundry tooling
 if [ -d "$HOME/.foundry/bin" ]; then
-    export PATH="$PATH:$HOME/.foundry/bin"
+    PATH="$PATH:$HOME/.foundry/bin"
 fi
 
-# TODO: only if nvim exists
-EDITOR=nvim
-
-# TODO - side effects?
-export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
-
-GOPATH=$HOME/go
-PATH=$PATH:$GOPATH/bin
+if command -v nvim &> /dev/null
+then
+    export EDITOR=nvim
+    export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
+fi
 
 # rust executables
 if [ -d "$HOME/.cargo/bin" ]; then
@@ -25,12 +22,12 @@ fi
 
 # ruby executables
 if [ -d "$HOME/.gem/ruby/2.7.0" ]; then
-    export PATH="$PATH:$HOME/.gem/ruby/2.7.0/bin"
+    PATH="$PATH:$HOME/.gem/ruby/2.7.0/bin"
 fi
 
 # hardware gpg signing on linux for local user
 if [ -d "$HOME/.local/bin" ]; then
-    export PATH="$PATH:$HOME/.local/bin"
+    PATH="$PATH:$HOME/.local/bin"
 fi
 
 # TODO: don't default to ledger
@@ -64,3 +61,6 @@ if [ -f /usr/share/fzf/key-bindings.bash ]; then
     source /usr/share/fzf/key-bindings.bash
 fi
 
+if [ -f $(which direnv) ]; then
+    eval "$(direnv hook bash)"
+fi
