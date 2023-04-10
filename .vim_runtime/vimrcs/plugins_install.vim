@@ -56,48 +56,6 @@ Plug 'nvim-lua/plenary.nvim'
 " Initialize plugin system
 call plug#end()
 
-" https://sharksforarms.dev/posts/neovim-rust/
-" this must come after the call to plug#end()
-" Configure LSP through rust-tools.nvim plugin.
-" rust-tools will configure and enable certain LSP features for us.
-" See https://github.com/simrat39/rust-tools.nvim#configuration
-lua <<EOF
-local nvim_lsp = require'lspconfig'
-
-local opts = {
-    tools = { -- rust-tools options
-        autoSetHints = true,
-        hover_with_actions = true,
-        inlay_hints = {
-            show_parameter_hints = false,
-            parameter_hints_prefix = "",
-            other_hints_prefix = "",
-        },
-    },
-
-    -- all the opts to send to nvim-lspconfig
-    -- these override the defaults set by rust-tools.nvim
-    -- see https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer
-    server = {
-        -- on_attach is a callback called when the language server attachs to the buffer
-        -- on_attach = on_attach,
-        settings = {
-            -- to enable rust-analyzer settings visit:
-            -- https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/generated_config.adoc
-            ["rust-analyzer"] = {
-                checkOnSave = {
-                    -- command = "clippy",
-                    enable = false
-                    -- extraArgs = '--target-dir /tmp/rust-analyzer-check'
-                },
-            }
-        }
-    },
-}
-
-require('rust-tools').setup(opts)
-EOF
-
 " Setup Completion
 " See https://github.com/hrsh7th/nvim-cmp#basic-configuration
 lua <<EOF
@@ -170,7 +128,7 @@ local buf_map = function(bufnr, mode, lhs, rhs, opts)
 end
 local on_attach = function(client, bufnr)
     if client.resolved_capabilities.document_formatting then
-        vim.cmd("autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_sync()")
+        vim.cmd("autocmd BufWritePre <buffer> lua vim.lsp.buf.format()")
     end
 end
 
@@ -200,5 +158,7 @@ null_ls.setup({
     },
     on_attach = on_attach,
 })
+
+lspconfig.rust_analyzer.setup{}
 
 EOF
