@@ -51,6 +51,6 @@ if [[ -L $USER_NVIM_CONFIG ]]; then
   unlink $USER_NVIM_CONFIG
 fi
 
-CMD="ln -sf $PWD/astro $USER_NVIM_CONFIG"
+CMD="ln -sf $PWD/user $USER_NVIM_CONFIG"
 echo "RUNNING: $CMD"
 eval $CMD
