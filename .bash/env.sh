@@ -6,7 +6,7 @@ ROOT_DIR=$(dirname $DIR)
 
 # import foundry tooling
 if [ -d "$HOME/.foundry/bin" ]; then
-    PATH="$PATH:$HOME/.foundry/bin"
+    path_add "$HOME/.foundry/bin"
 fi
 
 export TERMINAL=$(ps -h -o comm -p $PPID)
@@ -18,26 +18,30 @@ then
 fi
 
 if [ -d /usr/local/go/bin ]; then
-    export PATH=$PATH:/usr/local/go/bin
+    path_add /usr/local/go/bin
 fi
 
 # rust executables
 if [ -d "$HOME/.cargo/bin" ]; then
-    PATH="$HOME/.cargo/bin:$PATH"
+    path_add "$HOME/.cargo/bin"
+fi
+
+if [ -d "$HOME/bin" ]; then
+    path_add "$HOME/bin"
 fi
 
 # ruby executables
 if [ -d "$HOME/.gem/ruby/2.7.0" ]; then
-    PATH="$PATH:$HOME/.gem/ruby/2.7.0/bin"
+    path_add "$HOME/.gem/ruby/2.7.0/bin"
 fi
 
 # hardware gpg signing on linux for local user
 if [ -d "$HOME/.local/bin" ]; then
-    PATH="$PATH:$HOME/.local/bin"
+    path_add "$HOME/.local/bin"
 fi
 
 if [ -d "$HOME/.huff" ]; then
-    PATH="$PATH:$HOME/.huff/bin"
+    path_add "$HOME/.huff/bin"
 fi
 
 # TODO: don't default to ledger
@@ -82,7 +86,7 @@ export NVM_DIR="$HOME/.nvm"
 # Setup fzf
 # ---------
 if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
-  export PATH="$PATH:$HOME/.fzf/bin"
+  path_add $HOME/.fzf/bin
 fi
 
 # Auto-completion
@@ -93,3 +97,9 @@ fi
 # ------------
 source "$HOME/.fzf/shell/key-bindings.bash"
 
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
+# This should run at the end of modifying the PATH
+path_clean

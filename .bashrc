@@ -1,6 +1,6 @@
-if [ -f "$HOME/.cargo/env" ]; then
-    . "$HOME/.cargo/env"
-fi
+#!/usr/bin/env bash
+
+source $HOME/.path.bash
 
 for file in $HOME/.bash/*; do
 	source $file
