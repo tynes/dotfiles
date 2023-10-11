@@ -9,6 +9,10 @@ if [ -d "$HOME/.foundry/bin" ]; then
     path_add "$HOME/.foundry/bin"
 fi
 
+if [ -d /opt/homebrew/bin ]; then
+    path_add /opt/homebrew/bin
+fi
+
 export TERMINAL=$(ps -h -o comm -p $PPID)
 
 if command -v nvim &> /dev/null
