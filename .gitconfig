@@ -1,3 +1,9 @@
 [user]
-	name = Mark Tyneway
 	email = mark.tyneway@gmail.com
+	name = Mark Tyneway
+[core]
+	editor = nvim
+[merge]
+	conflictstyle = diff3
+[commit]
+	gpgsign = false
