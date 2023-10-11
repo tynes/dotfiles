@@ -9,10 +9,16 @@ if [ -d "$HOME/.foundry/bin" ]; then
     PATH="$PATH:$HOME/.foundry/bin"
 fi
 
+export TERMINAL=$(ps -h -o comm -p $PPID)
+
 if command -v nvim &> /dev/null
 then
     export EDITOR=nvim
     export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
+fi
+
+if [ -d /usr/local/go/bin ]; then
+    export PATH=$PATH:/usr/local/go/bin
 fi
 
 # rust executables
@@ -28,6 +34,10 @@ fi
 # hardware gpg signing on linux for local user
 if [ -d "$HOME/.local/bin" ]; then
     PATH="$PATH:$HOME/.local/bin"
+fi
+
+if [ -d "$HOME/.huff" ]; then
+    PATH="$PATH:$HOME/.huff/bin"
 fi
 
 # TODO: don't default to ledger
@@ -64,3 +74,22 @@ fi
 if [ -f $(which direnv) ]; then
     eval "$(direnv hook bash)"
 fi
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Setup fzf
+# ---------
+if [[ ! "$PATH" == *$HOME/.fzf/bin* ]]; then
+  export PATH="$PATH:$HOME/.fzf/bin"
+fi
+
+# Auto-completion
+# ---------------
+[[ $- == *i* ]] && source "$HOME/.fzf/shell/completion.bash" 2> /dev/null
+
+# Key bindings
+# ------------
+source "$HOME/.fzf/shell/key-bindings.bash"
+

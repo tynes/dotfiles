@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function ps1_git_hash_short() {
     git rev-parse --short HEAD 2>/dev/null | xargs printf "[%s]"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 export PYTHON_3_VIRTUAL_ENV_PATH=$HOME/python
 mkdir -p "$PYTHON_3_VIRTUAL_ENV_PATH"

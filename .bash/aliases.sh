@@ -1,26 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function src() {
     source ~/.bashrc
 }
 
-alias aws='docker run --rm -ti -v ~/.aws:/root/.aws amazon/aws-cli'
-
+# make assumption of installed program based on OS
 if [[ "$(uname -s)" == 'Linux' ]]; then
+    # gnu ls
+    alias ls='ls --color'
     alias open='xdg-open'
+    alias pbcopy='xclip -selection clipboard'
+else
+    # bsd ls
+    alias ls='ls -G'
 fi
 
 alias psg='ps -ef | grep -i $1'
 alias nsg='netstat -natp | grep -i $1'
 
-# make assumption of installed program based on OS
-if [[ "$(uname -s)" == 'Linux' ]]; then
-    # gnu ls
-    alias ls='ls --color'
-else
-    # bsd ls
-    alias ls='ls -G'
-fi
 alias la='ls -a'
 alias ll='ls -l'
 alias lla='ls -la'
@@ -42,7 +39,6 @@ function nodei() {
 # neovim
 alias e='nvim'
 
-# TODO: harden for non mac
 alias pwdcp='pwd | pbcopy'
 
 # move back up one directory and ls
@@ -68,11 +64,13 @@ function r() {
 }
 # mkdir and cd
 function mkcd() { mkdir -p "$@" && cd "$_"; }
+
 # cd and ls
 function cdls() {
     cd "$@" && ls
 }
 
+# TODO: put this behind darwin flag
 # use homebrew git
 if which brew &>/dev/null; then
     alias git="`brew --prefix`/bin/git"
@@ -135,9 +133,6 @@ fi;
 
 # Add tab completion for SSH hostnames based on ~/.ssh/config, ignoring wildcards
 [ -e "$HOME/.ssh/config" ] && complete -o "default" -o "nospace" -W "$(grep "^Host" ~/.ssh/config | grep -v "[?*]" | cut -d " " -f2- | tr ' ' '\n')" scp sftp ssh;
-
-# share current directory on port 8000
-alias webshare='python -m SimpleHTTPServer'
 
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset \
 -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
@@ -231,19 +226,4 @@ function pdir() {
     done
     echo "$PWD"
     echo "$to_print"
-}
-
-# TODO: remove if not useful
-# jump
-[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
-
-# TODO: this doesn't always work...
-# use ip addr show
-function myip() {
-    local ipv4
-    local ipv6
-    ipv4=$(dig +short myip.opendns.com @resolver1.opendns.com)
-    ipv6=$(dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | tr -d '"')
-    echo "ipv4: ${ipv4:="not found"}"
-    echo "ipv6: ${ipv6:="not found"}"
 }

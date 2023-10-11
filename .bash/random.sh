@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function random_string() {
     LC_CTYPE=C tr -dc '0-9a-z' </dev/urandom | head -c"$1"

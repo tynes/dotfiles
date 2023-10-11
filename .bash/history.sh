@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 alias hist='history'
 # Avoid duplicates
 export HISTCONTROL=ignoredups:erasedups
