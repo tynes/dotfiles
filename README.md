@@ -19,4 +19,3 @@ Aliases
 - `git`
 - `docker`
 - `kubernetes`
-
