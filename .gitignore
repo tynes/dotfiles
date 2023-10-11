@@ -1,8 +1,4 @@
 .DS_Store
 
 # stores history of files changed
-.config/nvim/.netrwhist
-.config/configstore/update-notifier-npm.json
-.config/git/gitk
-.config/wireshark
-.config/htop/htoprc
+.config
