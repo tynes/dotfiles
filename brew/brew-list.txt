@@ -73,5 +73,3 @@ watch
 weechat
 wget
 xz
-zsh
-zsh-completions
