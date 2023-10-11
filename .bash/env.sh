@@ -21,6 +21,10 @@ then
     export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 fi
 
+if [ -d /usr/local/bin ]; then
+    path_add /usr/local/bin
+fi
+
 if [ -d /usr/local/go/bin ]; then
     path_add /usr/local/go/bin
 fi
