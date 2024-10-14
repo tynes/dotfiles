@@ -39,18 +39,23 @@ do
   eval $CMD
 done
 
-# TODO: everything below here is untested.
-NVIM_CONFIG=$HOME/.config/nvim
-USER_NVIM_CONFIG=$NVIM_CONFIG/lua/user
-if [ ! -f $HOME/.config/nvim/init.lua ]; then
-  echo "Installing AstroNvim"
-  git clone --depth 1 https://github.com/AstroNvim/AstroNvim $NVIM_CONFIG
+# handles vscode
+if [[ "$(uname)" == 'Darwin' ]]; then
+  ln -sf "$PWD/settings.json" "$HOME/Library/Application\ Support/Code/User/settings.json"
 fi
 
-if [[ -L $USER_NVIM_CONFIG ]]; then
-  unlink $USER_NVIM_CONFIG
-fi
+# TODO: make new neovim setup
+# NVIM_CONFIG=$HOME/.config/nvim
+# USER_NVIM_CONFIG=$NVIM_CONFIG/lua/user
+# if [ ! -f $HOME/.config/nvim/init.lua ]; then
+#   echo "Installing AstroNvim"
+#   git clone --depth 1 https://github.com/AstroNvim/template $NVIM_CONFIG
+# fi
 
-CMD="ln -sf $PWD/user $USER_NVIM_CONFIG"
-echo "RUNNING: $CMD"
-eval $CMD
+# if [[ -L $USER_NVIM_CONFIG ]]; then
+#   unlink $USER_NVIM_CONFIG
+# fi
+
+# CMD="ln -sf "$PWD/user" $USER_NVIM_CONFIG"
+#echo "RUNNING: $CMD"
+#eval $CMD

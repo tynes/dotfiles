@@ -10,7 +10,7 @@ if [ -d "$HOME/.foundry/bin" ]; then
 fi
 
 if [ -d /opt/homebrew/bin ]; then
-    path_add /opt/homebrew/bin
+    path_add /opt/homebrew/bin before
 fi
 
 export TERMINAL=$(ps -h -o comm -p $PPID)
@@ -50,6 +50,10 @@ fi
 
 if [ -d "$HOME/.huff" ]; then
     path_add "$HOME/.huff/bin"
+fi
+
+if [ -d "$HOME/.foundry/bin" ]; then
+    path_add "$HOME/.foundry/bin"
 fi
 
 # TODO: don't default to ledger
@@ -99,11 +103,7 @@ fi
 
 # Auto-completion
 # ---------------
-[[ $- == *i* ]] && source "$HOME/.fzf/shell/completion.bash" 2> /dev/null
-
-# Key bindings
-# ------------
-source "$HOME/.fzf/shell/key-bindings.bash"
+[[ $- == *i* && -f "$HOME/.fzf/shell/completion.bash" ]] && source "$HOME/.fzf/shell/completion.bash" 2> /dev/null
 
 if [ -f "$HOME/.cargo/env" ]; then
     . "$HOME/.cargo/env"
