@@ -60,3 +60,19 @@ eval $CMD
 
 echo "AstroNvim v5 setup complete!"
 echo "Run 'nvim' to start Neovim and install plugins."
+
+# Ghostty terminal setup
+echo "Setting up Ghostty terminal config..."
+
+# Ensure .config directory exists
+mkdir -p ~/.config
+
+# Backup existing ghostty config if it exists
+[ -e ~/.config/ghostty ] && mv ~/.config/ghostty ~/.config/ghostty.bak && echo "Backed up ~/.config/ghostty to ~/.config/ghostty.bak"
+
+# Create symlink to Ghostty config
+CMD="ln -sf $PWD/config/ghostty $HOME/.config/ghostty"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Ghostty setup complete!"
