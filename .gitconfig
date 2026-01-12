@@ -7,3 +7,5 @@
 	conflictstyle = diff3
 [commit]
 	gpgsign = false
+[url "git@github.com:"]
+	insteadOf = https://github.com/
