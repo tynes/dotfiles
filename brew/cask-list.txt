@@ -1,7 +1,0 @@
-flux
-font-source-code-pro
-google-chrome
-gpg-suite
-iterm2
-vlc
-wireshark
