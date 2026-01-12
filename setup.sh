@@ -44,18 +44,19 @@ if [[ "$(uname)" == 'Darwin' ]]; then
   ln -sf "$PWD/settings.json" "$HOME/Library/Application\ Support/Code/User/settings.json"
 fi
 
-# TODO: make new neovim setup
-# NVIM_CONFIG=$HOME/.config/nvim
-# USER_NVIM_CONFIG=$NVIM_CONFIG/lua/user
-# if [ ! -f $HOME/.config/nvim/init.lua ]; then
-#   echo "Installing AstroNvim"
-#   git clone --depth 1 https://github.com/AstroNvim/template $NVIM_CONFIG
-# fi
+# AstroNvim v5 setup
+echo "Setting up AstroNvim v5..."
 
-# if [[ -L $USER_NVIM_CONFIG ]]; then
-#   unlink $USER_NVIM_CONFIG
-# fi
+# Backup existing nvim directories
+[ -e ~/.config/nvim ] && mv ~/.config/nvim ~/.config/nvim.bak && echo "Backed up ~/.config/nvim to ~/.config/nvim.bak"
+[ -e ~/.local/share/nvim ] && mv ~/.local/share/nvim ~/.local/share/nvim.bak && echo "Backed up ~/.local/share/nvim to ~/.local/share/nvim.bak"
+[ -e ~/.local/state/nvim ] && mv ~/.local/state/nvim ~/.local/state/nvim.bak && echo "Backed up ~/.local/state/nvim to ~/.local/state/nvim.bak"
+[ -e ~/.cache/nvim ] && mv ~/.cache/nvim ~/.cache/nvim.bak && echo "Backed up ~/.cache/nvim to ~/.cache/nvim.bak"
 
-# CMD="ln -sf "$PWD/user" $USER_NVIM_CONFIG"
-#echo "RUNNING: $CMD"
-#eval $CMD
+# Create symlink to AstroNvim v5 config
+CMD="ln -sf $PWD/config $HOME/.config/nvim"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "AstroNvim v5 setup complete!"
+echo "Run 'nvim' to start Neovim and install plugins."
