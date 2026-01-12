@@ -43,6 +43,14 @@ if [ -d "$HOME/.gem/ruby/2.7.0" ]; then
     path_add "$HOME/.gem/ruby/2.7.0/bin"
 fi
 
+if [ -d "/opt/homebrew/sbin" ]; then
+    path_add "/opt/homebrew/sbin"
+fi
+
+if [ -d "$HOME/.local/bin" ]; then
+    path_add "$HOME/.local/bin"
+fi
+
 # hardware gpg signing on linux for local user
 if [ -d "$HOME/.local/bin" ]; then
     path_add "$HOME/.local/bin"
