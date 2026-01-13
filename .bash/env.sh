@@ -56,25 +56,6 @@ if [ -d "$HOME/.local/bin" ]; then
     path_add "$HOME/.local/bin"
 fi
 
-if [ -d "$HOME/.huff" ]; then
-    path_add "$HOME/.huff/bin"
-fi
-
-if [ -d "$HOME/.foundry/bin" ]; then
-    path_add "$HOME/.foundry/bin"
-fi
-
-# TODO: don't default to ledger
-# currently default to using ledger
-export GNUPGHOME=~/.gnupg/ledger
-
-function gpghome() {
-    selection=$(echo "$HOME/.gnupg/ledger
-$HOME/.gnupg
-$HOME/.gnupg/trezor" | fzf)
-    export GNUPGHOME="$selection"
-}
-
 # less options
 export LESS='-R -C -M -I -j 10 -# 4'
 # -C - make full screen reprints faster
@@ -115,6 +96,11 @@ fi
 
 if [ -f "$HOME/.cargo/env" ]; then
     . "$HOME/.cargo/env"
+fi
+
+# Bitwarden SSH agent
+if [ -S "$HOME/.bitwarden-ssh-agent.sock" ]; then
+    export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
 fi
 
 # This should run at the end of modifying the PATH
