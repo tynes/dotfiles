@@ -99,9 +99,11 @@ if [ -f "$HOME/.cargo/env" ]; then
 fi
 
 # Bitwarden SSH agent
-if [ -S "$HOME/.bitwarden-ssh-agent.sock" ]; then
-    export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
-fi
+function bw_ssh_agent() {
+    if [ -S "$HOME/.bitwarden-ssh-agent.sock" ]; then
+        export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
+    fi
+}
 
 if [ -z "$SSH_AUTH_SOCK" ]; then
     eval "$(ssh-agent -s)"
