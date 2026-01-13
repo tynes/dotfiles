@@ -24,6 +24,7 @@ alias lla='ls -la'
 alias l='ls'
 alias ..='cd ..'
 alias c='clear'
+alias z='zoxide'
 
 # neovim
 alias e='nvim'
