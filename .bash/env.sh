@@ -34,12 +34,12 @@ if [ -d "$HOME/.foundry/bin" ]; then
     path_add "$HOME/.foundry/bin"
 fi
 
-export TERMINAL=$(ps -h -o comm -p $PPID)
+# cargo rust
+[ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
 if command -v nvim &> /dev/null
 then
     export EDITOR=nvim
-    export VIM_RUNTIME="$ROOT_DIR/vim_runtime"
 fi
 
 if [ -d /usr/local/bin ]; then
@@ -48,11 +48,6 @@ fi
 
 if [ -d /usr/local/go/bin ]; then
     path_add /usr/local/go/bin
-fi
-
-# rust executables
-if [ -d "$HOME/.cargo/bin" ]; then
-    path_add "$HOME/.cargo/bin"
 fi
 
 if [ -d "$HOME/bin" ]; then
@@ -70,14 +65,6 @@ export LESS='-R -C -M -I -j 10 -# 4'
 # -I - ignore casing in search
 # -j 10 - display search results in line 10
 # -# 4 - move 4 characters left/right on arrow key press
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-if [ -f "$HOME/.cargo/env" ]; then
-    . "$HOME/.cargo/env"
-fi
 
 # Bitwarden SSH agent
 function bw_ssh_agent() {
