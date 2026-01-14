@@ -2,11 +2,26 @@
 	email = mark.tyneway@proton.me
 	name = Mark Tyneway
 	signingkey = 575BB6F525B0CF68
+
 [core]
 	editor = nvim
+  pager = delta
+
+[interactive]
+  diffFilter = delta --color-only
+
+[delta]
+  navigate = true
+  line-numbers = true
+  dark = true
+  side-by-side = true
+
 [merge]
 	conflictstyle = diff3
+
 [commit]
 	gpgsign = true
+
 [url "git@github.com:"]
 	insteadOf = https://github.com/
+
