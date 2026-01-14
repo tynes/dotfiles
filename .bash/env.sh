@@ -49,6 +49,7 @@ if [ -d /usr/local/go/bin ]; then
     path_add /usr/local/go/bin
 fi
 
+# this is the bin at the root of the repo
 if [ -d "$HOME/bin" ]; then
     path_add "$HOME/bin"
 fi
