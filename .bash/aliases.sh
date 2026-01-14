@@ -25,7 +25,7 @@ alias l='ls'
 alias ..='cd ..'
 alias c='clear'
 function mkcd() { mkdir -p "$@" && cd "$_"; }
-function cdls() { cd "$@" && ls }
+function cdls() { cd "$@" && ls; }
 alias z='zoxide'
 
 # neovim
