@@ -25,7 +25,7 @@ if command -v brew &> /dev/null; then
     path_add $(brew --prefix)/bin before
 
     # git completion
-    $(brew --prefix)/etc/bash_completion.d/git-completion.bash
+    source $(brew --prefix)/etc/bash_completion.d/git-completion.bash
 fi
 
 # import foundry tooling
