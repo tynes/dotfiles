@@ -27,6 +27,9 @@ fi
 # homebrew
 if command -v brew &> /dev/null; then
     path_add $(brew --prefix)/bin before
+
+    # git completion
+    $(brew --prefix)/etc/bash_completion.d/git-completion.bash
 fi
 
 # import foundry tooling
@@ -57,6 +60,7 @@ fi
 if [ -d "$HOME/.local/bin" ]; then
     path_add "$HOME/.local/bin"
 fi
+
 
 # less options
 export LESS='-R -C -M -I -j 10 -# 4'
