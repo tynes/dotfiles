@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# ROOT_DIR is home directory when ~/dotfiles
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-ROOT_DIR=$(dirname $DIR)
-
 # direnv
 if [ -f $(which direnv) ]; then
     eval "$(direnv hook bash)"
