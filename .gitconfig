@@ -1,11 +1,12 @@
 [user]
 	email = mark.tyneway@proton.me
 	name = Mark Tyneway
+	signingkey = 575BB6F525B0CF68
 [core]
 	editor = nvim
 [merge]
 	conflictstyle = diff3
 [commit]
-	gpgsign = false
+	gpgsign = true
 [url "git@github.com:"]
 	insteadOf = https://github.com/
