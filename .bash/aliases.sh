@@ -4,20 +4,10 @@ function src() {
     source ~/.bashrc
 }
 
-# make assumption of installed program based on OS
-if [[ "$(uname -s)" == 'Linux' ]]; then
-    # gnu ls
-    alias ls='ls --color'
-    alias open='xdg-open'
-    alias pbcopy='xclip -selection clipboard'
-else
-    # bsd ls
-    alias ls='ls -G'
-fi
-
 alias psg='ps -ef | grep -i $1'
 alias nsg='netstat -natp | grep -i $1'
 
+alias ls='eza'
 alias la='ls -a'
 alias ll='ls -l'
 alias lla='ls -la'
@@ -27,14 +17,14 @@ alias c='clear'
 function mkcd() { mkdir -p "$@" && cd "$_"; }
 function cdls() { cd "$@" && ls; }
 alias z='zoxide'
-
 # neovim
 alias e='nvim'
-
-# everyday helpers
-alias diff='difft'
-alias cat='BAT_PAGER=never bat'
-alias less='BAT_PAGER=builtin bat'
+# shorter cat
+alias ca='BAT_PAGER=never bat'
+# shorter less
+alias les='moor'
+# shorter diff
+alias dif='difft'
 
 # git
 alias g='git'
