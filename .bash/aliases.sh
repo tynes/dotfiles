@@ -31,7 +31,10 @@ alias z='zoxide'
 # neovim
 alias e='nvim'
 
+# everyday helpers
 alias diff='difft'
+alias cat='BAT_PAGER=never bat'
+alias less='BAT_PAGER=builtin bat'
 
 # git
 alias g='git'
