@@ -1,5 +1,15 @@
 #!/bin/bash
 
+export PAGER=nvimpager
+
+# less options
+export LESS='-R -C -M -I -j 10 -# 4'
+# -C - make full screen reprints faster
+# -M - display more info in status line
+# -I - ignore casing in search
+# -j 10 - display search results in line 10
+# -# 4 - move 4 characters left/right on arrow key press
+
 # direnv
 if [ -f $(which direnv) ]; then
     eval "$(direnv hook bash)"
@@ -57,15 +67,6 @@ fi
 if [ -d "$HOME/.local/bin" ]; then
     path_add "$HOME/.local/bin"
 fi
-
-
-# less options
-export LESS='-R -C -M -I -j 10 -# 4'
-# -C - make full screen reprints faster
-# -M - display more info in status line
-# -I - ignore casing in search
-# -j 10 - display search results in line 10
-# -# 4 - move 4 characters left/right on arrow key press
 
 # Bitwarden SSH agent
 function bw_ssh_agent() {
