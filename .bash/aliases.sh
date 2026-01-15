@@ -4,8 +4,23 @@ function src() {
     source ~/.bashrc
 }
 
-alias psg='ps -ef | grep -i $1'
-alias nsg='netstat -natp | grep -i $1'
+
+function psg() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: psg <pattern>" >&2
+        return 1
+    fi
+    ps -ef | grep -i "$1"
+}
+
+function nsg() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: nsg <pattern>" >&2
+        return 1
+    fi
+    netstat -natp | grep -i "$1"
+}
+
 
 alias ls='eza'
 alias la='ls -a'
