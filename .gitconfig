@@ -15,7 +15,7 @@
   line-numbers = true
   dark = true
   side-by-side = true
-  pager = bat --pager=never
+  pager = nvimpager
 
 [merge]
 	conflictstyle = diff3
