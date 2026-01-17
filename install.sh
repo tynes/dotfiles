@@ -158,17 +158,24 @@ install_eza_linux() {
         info "eza already installed"
         return
     fi
-    info "Installing eza..."
-    # Try apt first (available in newer Ubuntu/Debian)
-    if sudo apt install -y eza 2>/dev/null; then
-        return
+    info "Installing eza from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    EZA_VERSION=$(curl -s https://api.github.com/repos/eza-community/eza/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$EZA_VERSION" ]; then
+        error "Failed to get latest eza version"
+        return 1
     fi
-    # Fall back to cargo
-    if command -v cargo &> /dev/null; then
-        cargo install eza
-    else
-        warn "Could not install eza. Install Rust/cargo first, then run: cargo install eza"
-    fi
+
+    info "Downloading eza $EZA_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/eza-community/eza/releases/download/${EZA_VERSION}/eza_x86_64-unknown-linux-musl.tar.gz" -o /tmp/eza.tar.gz
+    tar -xzf /tmp/eza.tar.gz -C ~/.local/bin
+    chmod +x ~/.local/bin/eza
+    rm /tmp/eza.tar.gz
+
+    info "eza installed to ~/.local/bin/eza"
 }
 
 install_zoxide_linux() {
@@ -236,12 +243,6 @@ install_go_linux() {
     sudo rm -rf /usr/local/go
     sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
     rm "go${GO_VERSION}.linux-amd64.tar.gz"
-
-    # Add Go to PATH for the current session
-    export PATH="/usr/local/go/bin:$PATH"
-    export PATH="$HOME/go/bin:$PATH"
-
-    # Note: PATH should include /usr/local/go/bin (add to .bashrc if needed)
 }
 
 install_node_linux() {
