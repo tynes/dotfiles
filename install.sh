@@ -197,11 +197,21 @@ install_delta_linux() {
         return
     fi
     info "Installing git-delta from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    DELTA_VERSION=$(curl -s https://api.github.com/repos/dandavison/delta/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$DELTA_VERSION" ]; then
+        error "Failed to get latest delta version"
+        return 1
+    fi
+
+    info "Downloading git-delta $DELTA_VERSION..."
     mkdir -p ~/.local/bin
-    curl -LO https://github.com/dandavison/delta/releases/latest/download/delta-0.18.2-x86_64-unknown-linux-gnu.tar.gz
-    tar xzf delta-0.18.2-x86_64-unknown-linux-gnu.tar.gz
-    mv delta-0.18.2-x86_64-unknown-linux-gnu/delta ~/.local/bin/
-    rm -rf delta-0.18.2-x86_64-unknown-linux-gnu delta-0.18.2-x86_64-unknown-linux-gnu.tar.gz
+    curl -LO "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+    tar xzf "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+    mv "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu/delta" ~/.local/bin/
+    rm -rf "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu" "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 }
 
 install_go_linux() {
@@ -210,7 +220,16 @@ install_go_linux() {
         return
     fi
     info "Installing Go from official releases..."
-    GO_VERSION="1.22.5"
+
+    # Get the latest Go version from the official API
+    GO_VERSION=$(curl -s 'https://go.dev/dl/?mode=json' | grep -o '"version":"go[0-9.]*"' | head -1 | cut -d'"' -f4 | sed 's/go//')
+
+    if [ -z "$GO_VERSION" ]; then
+        error "Failed to get latest Go version"
+        return 1
+    fi
+
+    info "Downloading Go $GO_VERSION..."
     curl -LO "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
     sudo rm -rf /usr/local/go
     sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
