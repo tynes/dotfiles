@@ -65,6 +65,10 @@ install_packages() {
                 jj \
                 jq \
                 bitwarden-cli \
+                gcloud-cli \
+                awscli \
+                claude-code \
+                gemini-cli \
                 nvimpager \
                 moor
 
@@ -130,6 +134,18 @@ install_packages() {
 
             # bitwarden-cli - password manager CLI
             install_bitwarden_cli_linux
+
+            # gcloud - Google Cloud CLI
+            install_gcloud_linux
+
+            # awscli - AWS CLI
+            install_awscli_linux
+
+            # claude-code - Claude Code CLI
+            install_claude_code_linux
+
+            # gemini-cli - Gemini CLI
+            install_gemini_cli_linux
 
             # nvimpager - neovim-based pager
             install_nvimpager
@@ -341,6 +357,77 @@ install_bitwarden_cli_linux() {
     rm /tmp/bw.zip
 
     info "bitwarden-cli installed to ~/.local/bin/bw"
+}
+
+install_gcloud_linux() {
+    if command -v gcloud &> /dev/null; then
+        info "gcloud already installed"
+        return
+    fi
+    info "Installing Google Cloud CLI..."
+
+    # Add the Cloud SDK distribution URI as a package source
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+
+    # Import the Google Cloud public key
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+    # Update and install the Cloud SDK
+    sudo apt update && sudo apt install -y google-cloud-cli
+
+    info "Google Cloud CLI installed"
+}
+
+install_awscli_linux() {
+    if command -v aws &> /dev/null; then
+        info "AWS CLI already installed"
+        return
+    fi
+    info "Installing AWS CLI..."
+
+    # Download and install AWS CLI v2
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+    unzip -o /tmp/awscliv2.zip -d /tmp
+    sudo /tmp/aws/install
+    rm -rf /tmp/awscliv2.zip /tmp/aws
+
+    info "AWS CLI installed"
+}
+
+install_claude_code_linux() {
+    if command -v claude &> /dev/null; then
+        info "Claude Code already installed"
+        return
+    fi
+    info "Installing Claude Code..."
+
+    # Install Claude Code using the official installer
+    curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/main/install.sh | bash
+
+    info "Claude Code installed"
+}
+
+install_gemini_cli_linux() {
+    if command -v gemini &> /dev/null; then
+        info "Gemini CLI already installed"
+        return
+    fi
+    info "Installing Gemini CLI from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    GEMINI_VERSION=$(curl -s https://api.github.com/repos/replit/gemini-cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$GEMINI_VERSION" ]; then
+        error "Failed to get latest gemini-cli version"
+        return 1
+    fi
+
+    info "Downloading gemini-cli $GEMINI_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/replit/gemini-cli/releases/download/${GEMINI_VERSION}/gemini-linux-amd64" -o ~/.local/bin/gemini
+    chmod +x ~/.local/bin/gemini
+
+    info "gemini-cli installed to ~/.local/bin/gemini"
 }
 
 install_nvimpager() {
