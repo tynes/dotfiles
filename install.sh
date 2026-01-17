@@ -409,8 +409,14 @@ install_claude_code_linux() {
     fi
     info "Installing Claude Code..."
 
-    # Install Claude Code using the official installer
-    curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/main/install.sh | bash
+    # Check if Node.js is available
+    if ! command -v npm &> /dev/null; then
+        error "Node.js/npm is required to install Claude Code but not found"
+        return 1
+    fi
+
+    # Install Claude Code via npm
+    npm install -g @anthropic-ai/claude-code
 
     info "Claude Code installed"
 }
@@ -446,22 +452,18 @@ install_gemini_cli_linux() {
         info "Gemini CLI already installed"
         return
     fi
-    info "Installing Gemini CLI from GitHub releases..."
+    info "Installing Gemini CLI..."
 
-    # Get the latest version tag from GitHub API
-    GEMINI_VERSION=$(curl -s https://api.github.com/repos/replit/gemini-cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-
-    if [ -z "$GEMINI_VERSION" ]; then
-        error "Failed to get latest gemini-cli version"
+    # Check if Node.js is available
+    if ! command -v npm &> /dev/null; then
+        error "Node.js/npm is required to install Gemini CLI but not found"
         return 1
     fi
 
-    info "Downloading gemini-cli $GEMINI_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -L "https://github.com/replit/gemini-cli/releases/download/${GEMINI_VERSION}/gemini-linux-amd64" -o ~/.local/bin/gemini
-    chmod +x ~/.local/bin/gemini
+    # Install Gemini CLI via npm
+    npm install -g @google/gemini-cli
 
-    info "gemini-cli installed to ~/.local/bin/gemini"
+    info "Gemini CLI installed"
 }
 
 install_nvimpager() {
