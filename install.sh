@@ -222,7 +222,7 @@ install_go_linux() {
     info "Installing Go from official releases..."
 
     # Get the latest Go version from the official API
-    GO_VERSION=$(curl -s 'https://go.dev/dl/?mode=json' | grep -o '"version":"go[0-9.]*"' | head -1 | cut -d'"' -f4 | sed 's/go//')
+    GO_VERSION=$(curl -s 'https://go.dev/dl/?mode=json' | grep -m1 '"version"' | cut -d'"' -f4 | sed 's/go//')
 
     if [ -z "$GO_VERSION" ]; then
         error "Failed to get latest Go version"
