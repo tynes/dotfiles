@@ -64,6 +64,7 @@ install_packages() {
                 gh \
                 jj \
                 jq \
+                bitwarden-cli \
                 nvimpager \
                 moor
 
@@ -126,6 +127,9 @@ install_packages() {
 
             # jj - Jujutsu version control
             install_jj_linux
+
+            # bitwarden-cli - password manager CLI
+            install_bitwarden_cli_linux
 
             # nvimpager - neovim-based pager
             install_nvimpager
@@ -312,6 +316,31 @@ install_jj_linux() {
     rm /tmp/jj.tar.gz
 
     info "jj installed to ~/.local/bin/jj"
+}
+
+install_bitwarden_cli_linux() {
+    if command -v bw &> /dev/null; then
+        info "bitwarden-cli already installed"
+        return
+    fi
+    info "Installing bitwarden-cli from GitHub releases..."
+
+    # Get the latest CLI version tag from GitHub API
+    BW_VERSION=$(curl -s https://api.github.com/repos/bitwarden/clients/releases | grep '"tag_name"' | grep 'cli-v' | head -1 | cut -d'"' -f4)
+
+    if [ -z "$BW_VERSION" ]; then
+        error "Failed to get latest bitwarden-cli version"
+        return 1
+    fi
+
+    info "Downloading bitwarden-cli $BW_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/bitwarden/clients/releases/download/${BW_VERSION}/bw-linux-${BW_VERSION#cli-v}.zip" -o /tmp/bw.zip
+    unzip -o /tmp/bw.zip -d ~/.local/bin
+    chmod +x ~/.local/bin/bw
+    rm /tmp/bw.zip
+
+    info "bitwarden-cli installed to ~/.local/bin/bw"
 }
 
 install_nvimpager() {
