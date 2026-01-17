@@ -66,6 +66,7 @@ install_packages() {
                 gh \
                 jj \
                 jq \
+                just \
                 bitwarden-cli \
                 gcloud-cli \
                 awscli \
@@ -136,6 +137,9 @@ install_packages() {
 
             # jj - Jujutsu version control
             install_jj_linux
+
+            # just - command runner
+            install_just_linux
 
             # bitwarden-cli - password manager CLI
             install_bitwarden_cli_linux
@@ -340,6 +344,31 @@ install_jj_linux() {
     rm /tmp/jj.tar.gz
 
     info "jj installed to ~/.local/bin/jj"
+}
+
+install_just_linux() {
+    if command -v just &> /dev/null; then
+        info "just already installed"
+        return
+    fi
+    info "Installing just from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    JUST_VERSION=$(curl -s https://api.github.com/repos/casey/just/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$JUST_VERSION" ]; then
+        error "Failed to get latest just version"
+        return 1
+    fi
+
+    info "Downloading just $JUST_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/just.tar.gz
+    tar -xzf /tmp/just.tar.gz -C ~/.local/bin just
+    chmod +x ~/.local/bin/just
+    rm /tmp/just.tar.gz
+
+    info "just installed to ~/.local/bin/just"
 }
 
 install_bitwarden_cli_linux() {
