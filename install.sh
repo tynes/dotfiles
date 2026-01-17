@@ -63,6 +63,7 @@ install_packages() {
                 uv \
                 gh \
                 jj \
+                jq \
                 nvimpager \
                 moor
 
@@ -87,7 +88,8 @@ install_packages() {
                 python3-pip \
                 python3-venv \
                 build-essential \
-                scdoc
+                scdoc \
+                jq
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
