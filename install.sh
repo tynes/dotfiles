@@ -297,10 +297,9 @@ install_jj_linux() {
     info "Downloading jj $JJ_VERSION..."
     mkdir -p ~/.local/bin
 
-    # Download and extract the binary
+    # Download and extract the binary (extract only the jj binary, not the directory metadata)
     curl -L "https://github.com/jj-vcs/jj/releases/download/${JJ_VERSION}/jj-${JJ_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/jj.tar.gz
-    tar -xzf /tmp/jj.tar.gz -C /tmp
-    mv /tmp/jj ~/.local/bin/
+    tar -xzf /tmp/jj.tar.gz -C ~/.local/bin ./jj
     chmod +x ~/.local/bin/jj
     rm /tmp/jj.tar.gz
 
