@@ -85,7 +85,9 @@ install_packages() {
                 unzip \
                 python3 \
                 python3-pip \
-                python3-venv
+                python3-venv \
+                build-essential \
+                scdoc
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
@@ -263,9 +265,27 @@ install_jj_linux() {
         info "jj already installed"
         return
     fi
-    info "Installing Jujutsu..."
-    install_rust
-    cargo install jj-cli
+    info "Installing Jujutsu from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    JJ_VERSION=$(curl -s https://api.github.com/repos/jj-vcs/jj/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$JJ_VERSION" ]; then
+        error "Failed to get latest jj version"
+        return 1
+    fi
+
+    info "Downloading jj $JJ_VERSION..."
+    mkdir -p ~/.local/bin
+
+    # Download and extract the binary
+    curl -L "https://github.com/jj-vcs/jj/releases/download/${JJ_VERSION}/jj-${JJ_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/jj.tar.gz
+    tar -xzf /tmp/jj.tar.gz -C /tmp
+    mv /tmp/jj ~/.local/bin/
+    chmod +x ~/.local/bin/jj
+    rm /tmp/jj.tar.gz
+
+    info "jj installed to ~/.local/bin/jj"
 }
 
 install_nvimpager() {
