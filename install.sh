@@ -329,18 +329,22 @@ install_moor() {
         info "moor already installed"
         return
     fi
-    info "Installing moor..."
+    info "Installing moor from GitHub releases..."
 
-    # Check if Go is available
-    if ! command -v go &> /dev/null; then
-        error "Go is required to install moor but not found"
+    # Get the latest version tag from GitHub API
+    MOOR_VERSION=$(curl -s https://api.github.com/repos/walles/moor/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$MOOR_VERSION" ]; then
+        error "Failed to get latest moor version"
         return 1
     fi
 
-    # Install moor using go install
-    go install github.com/walles/moor/v2/cmd/moor@latest
+    info "Downloading moor $MOOR_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/walles/moor/releases/download/${MOOR_VERSION}/moor-${MOOR_VERSION}-linux-amd64" -o ~/.local/bin/moor
+    chmod +x ~/.local/bin/moor
 
-    info "moor installed to \$GOPATH/bin (or ~/go/bin)"
+    info "moor installed to ~/.local/bin/moor"
 }
 
 # Install Rust/Cargo if needed for some tools
