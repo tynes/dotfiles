@@ -444,15 +444,14 @@ install_claude_code_linux() {
         return 1
     fi
 
-    # Create npm global directory in user's home if it doesn't exist
-    mkdir -p ~/.npm-global
-    npm config set prefix ~/.npm-global
-    export PATH=~/.npm-global/bin:$PATH
+    # Configure npm to use ~/.local for global installs (binaries go to ~/.local/bin)
+    mkdir -p ~/.local
+    npm config set prefix ~/.local
 
     # Install Claude Code via npm
     npm install -g @anthropic-ai/claude-code
 
-    info "Claude Code installed to ~/.npm-global/bin"
+    info "Claude Code installed to ~/.local/bin"
 }
 
 install_codex_linux() {
@@ -494,15 +493,14 @@ install_gemini_cli_linux() {
         return 1
     fi
 
-    # Create npm global directory in user's home if it doesn't exist
-    mkdir -p ~/.npm-global
-    npm config set prefix ~/.npm-global
-    export PATH=~/.npm-global/bin:$PATH
+    # Configure npm to use ~/.local for global installs (binaries go to ~/.local/bin)
+    mkdir -p ~/.local
+    npm config set prefix ~/.local
 
     # Install Gemini CLI via npm
     npm install -g @google/gemini-cli
 
-    info "Gemini CLI installed to ~/.npm-global/bin"
+    info "Gemini CLI installed to ~/.local/bin"
 }
 
 install_nvimpager() {
