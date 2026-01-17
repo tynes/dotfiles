@@ -234,6 +234,11 @@ install_go_linux() {
     sudo rm -rf /usr/local/go
     sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
     rm "go${GO_VERSION}.linux-amd64.tar.gz"
+
+    # Add Go to PATH for the current session
+    export PATH="/usr/local/go/bin:$PATH"
+    export PATH="$HOME/go/bin:$PATH"
+
     # Note: PATH should include /usr/local/go/bin (add to .bashrc if needed)
 }
 
