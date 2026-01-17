@@ -75,5 +75,9 @@ function bw_ssh_agent() {
     fi
 }
 
+# Added by OrbStack: command-line tools and integration
+# This won't be added again if you remove it.
+source ~/.orbstack/shell/init.bash 2>/dev/null || :
+
 # This should run at the end of modifying the PATH
 path_clean
