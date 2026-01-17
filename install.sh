@@ -325,8 +325,17 @@ install_moor() {
         return
     fi
     info "Installing moor..."
-    install_rust
-    cargo install moor
+
+    # Check if Go is available
+    if ! command -v go &> /dev/null; then
+        error "Go is required to install moor but not found"
+        return 1
+    fi
+
+    # Install moor using go install
+    go install github.com/walles/moor/v2/cmd/moor@latest
+
+    info "moor installed to \$GOPATH/bin (or ~/go/bin)"
 }
 
 # Install Rust/Cargo if needed for some tools
