@@ -68,6 +68,7 @@ install_packages() {
                 gcloud-cli \
                 awscli \
                 claude-code \
+                codex \
                 gemini-cli \
                 nvimpager \
                 moor
@@ -143,6 +144,9 @@ install_packages() {
 
             # claude-code - Claude Code CLI
             install_claude_code_linux
+
+            # codex - OpenAI Codex CLI
+            install_codex_linux
 
             # gemini-cli - Gemini CLI
             install_gemini_cli_linux
@@ -405,6 +409,32 @@ install_claude_code_linux() {
     curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/main/install.sh | bash
 
     info "Claude Code installed"
+}
+
+install_codex_linux() {
+    if command -v codex &> /dev/null; then
+        info "codex already installed"
+        return
+    fi
+    info "Installing OpenAI Codex from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    CODEX_VERSION=$(curl -s https://api.github.com/repos/openai/codex/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+
+    if [ -z "$CODEX_VERSION" ]; then
+        error "Failed to get latest codex version"
+        return 1
+    fi
+
+    info "Downloading codex $CODEX_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/openai/codex/releases/download/${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz" -o /tmp/codex.tar.gz
+    tar -xzf /tmp/codex.tar.gz -C /tmp
+    mv /tmp/codex-x86_64-unknown-linux-musl ~/.local/bin/codex
+    chmod +x ~/.local/bin/codex
+    rm /tmp/codex.tar.gz
+
+    info "codex installed to ~/.local/bin/codex"
 }
 
 install_gemini_cli_linux() {
