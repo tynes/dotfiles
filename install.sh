@@ -55,6 +55,8 @@ install_packages() {
                 direnv \
                 tmux \
                 git \
+                tig \
+                htop \
                 ripgrep \
                 fd \
                 go \
@@ -83,7 +85,9 @@ install_packages() {
             info "Installing packages via apt..."
             sudo apt install -y \
                 git \
+                tig \
                 tmux \
+                htop \
                 fzf \
                 direnv \
                 ripgrep \
