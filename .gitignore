@@ -2,3 +2,4 @@
 
 # stores history of files changed
 .config
+.claude/
