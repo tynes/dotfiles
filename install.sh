@@ -90,7 +90,6 @@ install_packages() {
                 tig \
                 tmux \
                 htop \
-                fzf \
                 direnv \
                 ripgrep \
                 fd-find \
@@ -111,6 +110,9 @@ install_packages() {
 
             # bat - package name differs
             sudo apt install -y bat || sudo apt install -y batcat
+
+            # fzf - install from GitHub (apt version is outdated)
+            install_fzf_linux
 
             # zoxide - install from GitHub
             install_zoxide_linux
@@ -221,6 +223,34 @@ install_zoxide_linux() {
     fi
     info "Installing zoxide..."
     curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+}
+
+install_fzf_linux() {
+    if command -v fzf &> /dev/null; then
+        info "fzf already installed"
+        return
+    fi
+    info "Installing fzf from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    FZF_VERSION=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | jq -r '.tag_name')
+
+    if [ -z "$FZF_VERSION" ] || [ "$FZF_VERSION" = "null" ]; then
+        error "Failed to get latest fzf version"
+        return 1
+    fi
+
+    # Version in filename doesn't have 'v' prefix
+    FZF_VERSION_NUM=${FZF_VERSION#v}
+
+    info "Downloading fzf $FZF_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -fL "https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION_NUM}-linux_amd64.tar.gz" -o /tmp/fzf.tar.gz
+    tar -xzf /tmp/fzf.tar.gz -C ~/.local/bin
+    chmod +x ~/.local/bin/fzf
+    rm /tmp/fzf.tar.gz
+
+    info "fzf installed to ~/.local/bin/fzf"
 }
 
 install_difftastic_linux() {
