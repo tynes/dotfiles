@@ -16,6 +16,7 @@ $directory\
 $username\
 $hostname\
 $git_branch\
+$git_commit\
 $git_status\
 $golang\
 $nodejs\
@@ -57,6 +58,12 @@ fish_style_pwd_dir_length = 0
 format = "[$symbol$branch(:$remote_branch)]($style) "
 symbol = "🔀 "
 style = "bold purple"
+
+[git_commit]
+format = "[$hash]($style) "
+style = "bold yellow"
+commit_hash_length = 7
+only_detached = false
 
 [git_status]
 format = '([\[$all_status$ahead_behind\]]($style) )'
