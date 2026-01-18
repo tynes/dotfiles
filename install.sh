@@ -180,6 +180,9 @@ install_packages() {
 
             # ghostty - terminal emulator
             install_ghostty_linux
+
+            # docker - container platform
+            install_docker_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -614,6 +617,36 @@ install_ghostty_linux() {
     sudo apt install -y ghostty
 
     info "Ghostty installed"
+}
+
+install_docker_linux() {
+    if command -v docker &> /dev/null; then
+        info "Docker already installed"
+        return
+    fi
+    info "Installing Docker from official repository..."
+
+    # Set up Docker's apt repository
+    sudo apt update
+    sudo apt install -y ca-certificates curl
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+    # Add the repository to apt sources
+    sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+    # Install Docker packages
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    info "Docker installed"
 }
 
 # Install Rust/Cargo if needed for some tools
