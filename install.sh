@@ -75,7 +75,10 @@ install_packages() {
                 gemini-cli \
                 nvimpager \
                 moor \
-                tailscale
+                tailscale \
+                ghostty \
+                gnupg \
+                orbstack
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -100,7 +103,8 @@ install_packages() {
                 python3-venv \
                 build-essential \
                 scdoc \
-                jq
+                jq \
+                gnupg
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
@@ -170,6 +174,9 @@ install_packages() {
 
             # tailscale - VPN and mesh networking
             install_tailscale_linux
+
+            # ghostty - terminal emulator
+            install_ghostty_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -584,6 +591,26 @@ install_tailscale_linux() {
     curl -fsSL https://tailscale.com/install.sh | sh
 
     info "Tailscale installed"
+}
+
+install_ghostty_linux() {
+    if command -v ghostty &> /dev/null; then
+        info "ghostty already installed"
+        return
+    fi
+    info "Installing Ghostty from debian.griffo.io..."
+
+    # Add the repository GPG key
+    curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
+
+    # Add the repository
+    echo "deb https://debian.griffo.io/apt $(lsb_release -sc 2>/dev/null) main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
+
+    # Update and install
+    sudo apt update
+    sudo apt install -y ghostty
+
+    info "Ghostty installed"
 }
 
 # Install Rust/Cargo if needed for some tools
