@@ -663,11 +663,43 @@ install_rust() {
     fi
 }
 
+# Initialize Neovim plugins if nvim-config exists
+init_neovim_plugins() {
+    if ! command -v nvim &> /dev/null; then
+        warn "Neovim not found, skipping plugin installation"
+        return
+    fi
+
+    # Check if nvim-config directory exists (relative to script location)
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ ! -d "$SCRIPT_DIR/nvim-config" ]; then
+        warn "nvim-config directory not found, skipping plugin installation"
+        return
+    fi
+
+    info "Initializing Neovim plugins..."
+
+    # Neovim plugin installation happens automatically on first launch
+    # We'll do a headless sync to pre-install plugins
+    nvim --headless +qa 2>/dev/null || true
+    sleep 2
+    nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+
+    info "Neovim plugins initialized"
+}
+
 # Main
 main() {
     info "Starting dependency installation..."
 
     install_packages
+
+    # Initialize Neovim plugins if setup has been run
+    # This allows the install script to work standalone or after setup.sh
+    if [ -d "$HOME/.config/nvim" ] && [ -L "$HOME/.config/nvim" ]; then
+        info "Detected Neovim configuration, initializing plugins..."
+        init_neovim_plugins
+    fi
 
     info "Done! Now run ./setup.sh to create symlinks."
 }
