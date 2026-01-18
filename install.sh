@@ -613,17 +613,15 @@ install_ghostty_linux() {
         info "ghostty already installed"
         return
     fi
-    info "Installing Ghostty from debian.griffo.io..."
+    info "Installing Ghostty via snap..."
 
-    # Add the repository GPG key
-    curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
+    # Ensure snapd is installed
+    if ! command -v snap &> /dev/null; then
+        sudo apt install -y snapd
+    fi
 
-    # Add the repository (use jammy as it's the supported LTS release)
-    echo "deb https://debian.griffo.io/apt jammy main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
-
-    # Update and install
-    sudo apt update
-    sudo apt install -y ghostty
+    # Install Ghostty via snap
+    sudo snap install ghostty --classic
 
     info "Ghostty installed"
 }
