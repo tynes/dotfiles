@@ -1,0 +1,144 @@
+# Starship prompt configuration
+# https://starship.rs/config/
+
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# Inserts a blank line between shell prompts
+add_newline = true
+
+# Timeout for commands executed by starship (in milliseconds)
+command_timeout = 1000
+
+# Format of the prompt
+format = """
+$directory\
+$username\
+$hostname\
+$git_branch\
+$git_status\
+$golang\
+$nodejs\
+$python\
+$rust\
+$package\
+$fill\
+$cmd_duration\
+$time
+$character"""
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
+
+[username]
+format = "[$user@]($style)"
+show_always = true
+style_user = "bold blue"
+style_root = "bold red"
+
+[hostname]
+ssh_only = false
+format = "[$ssh_symbol$hostname]($style) "
+style = "bold green"
+ssh_symbol = "🔐 "
+
+[directory]
+format = "[$path]($style)[$read_only]($read_only_style) "
+style = "bold cyan"
+truncation_length = 0
+truncate_to_repo = false
+read_only = " 🔒"
+home_symbol = "~"
+fish_style_pwd_dir_length = 0
+
+[git_branch]
+format = "[$symbol$branch(:$remote_branch)]($style) "
+symbol = "🔀 "
+style = "bold purple"
+
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = "bold red"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+conflicted = "="
+deleted = "✘"
+renamed = "»"
+modified = "!"
+staged = "+"
+untracked = "?"
+stashed = "≡"
+
+[golang]
+format = "[$symbol($version )]($style)"
+symbol = "🐹 "
+style = "bold cyan"
+
+[nodejs]
+format = "[$symbol($version )]($style)"
+symbol = "⬢ "
+style = "bold green"
+
+[python]
+format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+symbol = "🐍 "
+style = "bold yellow"
+pyenv_version_name = false
+
+[rust]
+format = "[$symbol($version )]($style)"
+symbol = "🦀 "
+style = "bold red"
+
+[package]
+format = "[$symbol$version]($style) "
+symbol = "📦 "
+style = "bold yellow"
+disabled = false
+
+[cmd_duration]
+min_time = 2_000
+format = "[$duration]($style) "
+style = "bold yellow"
+
+[time]
+disabled = false
+format = "[$time]($style) "
+style = "bold white"
+time_format = "%T"
+
+[fill]
+symbol = " "
+
+# Cloud provider configs
+[aws]
+format = '[$symbol($profile )(\($region\) )]($style)'
+symbol = "☁️ "
+style = "bold yellow"
+disabled = false
+
+[gcloud]
+format = '[$symbol$account(@$domain)(\($region\))]($style) '
+symbol = "☁️ "
+style = "bold blue"
+disabled = false
+
+# Container configs
+[docker_context]
+format = "[$symbol$context]($style) "
+symbol = "🐳 "
+style = "bold blue"
+disabled = false
+
+# Additional language support
+[terraform]
+format = "[$symbol$workspace]($style) "
+symbol = "💠 "
+style = "bold purple"
+disabled = false
+
+[direnv]
+disabled = false

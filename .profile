@@ -6,6 +6,9 @@
 # Pager and editor
 export PAGER=nvimpager
 
+# Starship config
+export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+
 # less options
 export LESS='-R -C -M -I -j 10 -# 4'
 # -C - make full screen reprints faster

@@ -76,3 +76,16 @@ echo "RUNNING: $CMD"
 eval $CMD
 
 echo "Ghostty setup complete!"
+
+# Starship prompt setup
+echo "Setting up Starship prompt config..."
+
+# Backup existing starship config if it exists
+[ -e ~/.config/starship.toml ] && mv ~/.config/starship.toml ~/.config/starship.toml.bak && echo "Backed up ~/.config/starship.toml to ~/.config/starship.toml.bak"
+
+# Create symlink to Starship config
+CMD="ln -sf $PWD/config/starship.toml $HOME/.config/starship.toml"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Starship setup complete!"

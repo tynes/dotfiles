@@ -80,7 +80,8 @@ install_packages() {
                 gnupg \
                 orbstack \
                 openssh \
-                keepassxc
+                keepassxc \
+                starship
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -188,6 +189,9 @@ install_packages() {
 
             # docker - container platform
             install_docker_linux
+
+            # starship - cross-shell prompt
+            install_starship_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -652,6 +656,16 @@ EOF
     sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
     info "Docker installed"
+}
+
+install_starship_linux() {
+    if command -v starship &> /dev/null; then
+        info "starship already installed"
+        return
+    fi
+    info "Installing starship from official installer..."
+    curl -sS https://starship.rs/install.sh | sh
+    info "starship installed"
 }
 
 # Install Rust/Cargo if needed for some tools

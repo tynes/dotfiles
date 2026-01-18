@@ -21,3 +21,8 @@ if [[ "$(uname)" == 'Darwin' ]]; then
 fi
 
 export PS1="\n\u \l [exit \$?] \t\n\w\[\$(tput sgr0)\]\$(ps1_parse_git_branch) \$(ps1_git_hash_short)\n$ "
+
+# Initialize starship prompt if available
+if command -v starship &> /dev/null; then
+    eval "$(starship init bash)"
+fi
