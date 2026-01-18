@@ -74,7 +74,8 @@ install_packages() {
                 codex \
                 gemini-cli \
                 nvimpager \
-                moor
+                moor \
+                tailscale
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -164,6 +165,9 @@ install_packages() {
 
             # moor - pager
             install_moor
+
+            # tailscale - VPN and mesh networking
+            install_tailscale_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -537,6 +541,19 @@ install_moor() {
     chmod +x ~/.local/bin/moor
 
     info "moor installed to ~/.local/bin/moor"
+}
+
+install_tailscale_linux() {
+    if command -v tailscale &> /dev/null; then
+        info "tailscale already installed"
+        return
+    fi
+    info "Installing Tailscale..."
+
+    # Use Tailscale's official install script
+    curl -fsSL https://tailscale.com/install.sh | sh
+
+    info "Tailscale installed"
 }
 
 # Install Rust/Cargo if needed for some tools
