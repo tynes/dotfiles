@@ -109,7 +109,10 @@ install_packages() {
                 gnupg \
                 openssh-client \
                 openssh-server \
-                keepassxc
+                keepassxc \
+                openssl \
+                libssl-dev \
+                pkg-config
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
