@@ -55,8 +55,7 @@ home_symbol = "~"
 fish_style_pwd_dir_length = 0
 
 [git_branch]
-format = "[$symbol$branch(:$remote_branch)]($style) "
-symbol = "🔀 "
+format = "[$branch(:$remote_branch)]($style) "
 style = "bold purple"
 
 [git_commit]
