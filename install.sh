@@ -664,7 +664,7 @@ install_starship_linux() {
         return
     fi
     info "Installing starship from official installer..."
-    curl -sS https://starship.rs/install.sh | sh
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
     info "starship installed"
 }
 
