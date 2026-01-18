@@ -22,7 +22,13 @@ fi
 
 # fzf
 if command -v fzf &> /dev/null; then
-    eval "$(fzf --bash)"
+    # fzf 0.48+ supports --bash, older versions need to source scripts directly
+    if fzf --bash &> /dev/null; then
+        eval "$(fzf --bash)"
+    elif [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
+        source /usr/share/doc/fzf/examples/key-bindings.bash
+        [ -f /usr/share/doc/fzf/examples/completion.bash ] && source /usr/share/doc/fzf/examples/completion.bash
+    fi
 fi
 
 # ssh
