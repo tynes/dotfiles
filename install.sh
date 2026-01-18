@@ -78,7 +78,8 @@ install_packages() {
                 tailscale \
                 ghostty \
                 gnupg \
-                orbstack
+                orbstack \
+                openssh
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -104,7 +105,9 @@ install_packages() {
                 build-essential \
                 scdoc \
                 jq \
-                gnupg
+                gnupg \
+                openssh-client \
+                openssh-server
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
