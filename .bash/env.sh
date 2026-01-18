@@ -30,17 +30,19 @@ if [ -z "$SSH_AUTH_SOCK" ]; then
     eval "$(ssh-agent -s)"
 fi
 
-# homebrew
-if command -v brew &> /dev/null; then
-    path_add $(brew --prefix)/bin before
+# homebrew - add to PATH first so brew command works
+if [ -d /opt/homebrew/bin ]; then
+    PATH="/opt/homebrew/bin:$PATH"
+fi
 
-    # git completion
-    source $(brew --prefix)/etc/bash_completion.d/git-completion.bash
+# git completion
+if command -v brew &> /dev/null; then
+    source $(brew --prefix)/etc/bash_completion.d/git-completion.bash 2>/dev/null
 fi
 
 # import foundry tooling
 if [ -d "$HOME/.foundry/bin" ]; then
-    path_add "$HOME/.foundry/bin"
+    PATH="$PATH:$HOME/.foundry/bin"
 fi
 
 # cargo rust
@@ -52,20 +54,20 @@ then
 fi
 
 if [ -d /usr/local/bin ]; then
-    path_add /usr/local/bin
+    PATH="$PATH:/usr/local/bin"
 fi
 
 if [ -d /usr/local/go/bin ]; then
-    path_add /usr/local/go/bin
+    PATH="$PATH:/usr/local/go/bin"
 fi
 
 # this is the bin at the root of the repo
 if [ -d "$HOME/bin" ]; then
-    path_add "$HOME/bin"
+    PATH="$PATH:$HOME/bin"
 fi
 
 if [ -d "$HOME/.local/bin" ]; then
-    path_add "$HOME/.local/bin"
+    PATH="$PATH:$HOME/.local/bin"
 fi
 
 # Bitwarden SSH agent
@@ -78,6 +80,3 @@ function bw_ssh_agent() {
 # Added by OrbStack: command-line tools and integration
 # This won't be added again if you remove it.
 source ~/.orbstack/shell/init.bash 2>/dev/null || :
-
-# This should run at the end of modifying the PATH
-path_clean
