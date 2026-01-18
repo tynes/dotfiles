@@ -40,9 +40,9 @@ style_root = "bold red"
 
 [hostname]
 ssh_only = false
-format = "[$ssh_symbol$hostname]($style) "
+format = "[$hostname$ssh_symbol]($style) "
 style = "bold green"
-ssh_symbol = "🔐 "
+ssh_symbol = " 🔐"
 
 [directory]
 format = "[$path]($style)[$read_only]($read_only_style) "
