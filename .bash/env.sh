@@ -30,6 +30,11 @@ function bw_ssh_agent() {
     fi
 }
 
+# Rust/Cargo
+if [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+fi
+
 # Added by OrbStack: command-line tools and integration
 # This won't be added again if you remove it.
 source ~/.orbstack/shell/init.bash 2>/dev/null || :

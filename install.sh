@@ -673,7 +673,6 @@ install_rust() {
     if ! command -v cargo &> /dev/null; then
         info "Installing Rust..."
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source "$HOME/.cargo/env"
     fi
 }
 
@@ -705,6 +704,9 @@ init_neovim_plugins() {
 # Main
 main() {
     info "Starting dependency installation..."
+
+    # Install Rust/Cargo first (needed for some tools)
+    install_rust
 
     install_packages
 
