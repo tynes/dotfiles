@@ -37,7 +37,7 @@ fi
 
 # git completion
 if command -v brew &> /dev/null; then
-    source $(brew --prefix)/etc/bash_completion.d/git-completion.bash 2>/dev/null
+    source $(brew --prefix)/etc/bash_completion.d/git-completion.bash
 fi
 
 # import foundry tooling

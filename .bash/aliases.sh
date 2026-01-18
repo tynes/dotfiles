@@ -4,7 +4,6 @@ function src() {
     source ~/.bashrc
 }
 
-
 function psg() {
     if [ "$#" -ne 1 ]; then
         echo "Usage: psg <pattern>" >&2
@@ -20,7 +19,6 @@ function nsg() {
     fi
     netstat -natp | grep -i "$1"
 }
-
 
 alias ls='eza'
 alias la='ls -a'
