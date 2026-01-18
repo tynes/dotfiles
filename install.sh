@@ -79,7 +79,8 @@ install_packages() {
                 ghostty \
                 gnupg \
                 orbstack \
-                openssh
+                openssh \
+                keepassxc
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -107,7 +108,8 @@ install_packages() {
                 jq \
                 gnupg \
                 openssh-client \
-                openssh-server
+                openssh-server \
+                keepassxc
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
