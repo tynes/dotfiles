@@ -59,6 +59,7 @@ install_packages() {
                 htop \
                 ripgrep \
                 fd \
+                tree \
                 go \
                 node \
                 python@3 \
@@ -99,6 +100,7 @@ install_packages() {
                 direnv \
                 ripgrep \
                 fd-find \
+                tree \
                 curl \
                 unzip \
                 python3 \
