@@ -15,6 +15,7 @@ format = """
 $directory\
 $username\
 $hostname\
+${custom.gcloud_ssh}\
 $git_branch\
 $git_commit\
 $git_status\
@@ -130,7 +131,13 @@ disabled = false
 format = '[$symbol$account(@$domain)(\($region\))]($style) '
 symbol = "☁️ "
 style = "bold blue"
-disabled = false
+disabled = true  # Using custom.gcloud_ssh instead
+
+# Custom GCP indicator - only shows when SSH'd into a GCP machine
+[custom.gcloud_ssh]
+when = 'grep -q "Google" /sys/class/dmi/id/sys_vendor 2>/dev/null'
+format = '[󰊭](bold blue) '
+style = 'bold blue'
 
 # Container configs
 [docker_context]
