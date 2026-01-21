@@ -89,3 +89,19 @@ echo "RUNNING: $CMD"
 eval $CMD
 
 echo "Starship setup complete!"
+
+# Jujutsu (jj) setup
+echo "Setting up Jujutsu (jj) config..."
+
+# Ensure .config/jj directory exists
+mkdir -p ~/.config/jj
+
+# Backup existing jj config if it exists
+[ -e ~/.config/jj/config.toml ] && mv ~/.config/jj/config.toml ~/.config/jj/config.toml.bak && echo "Backed up ~/.config/jj/config.toml to ~/.config/jj/config.toml.bak"
+
+# Create symlink to jj config
+CMD="ln -sf $PWD/config/jj/config.toml $HOME/.config/jj/config.toml"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Jujutsu setup complete!"

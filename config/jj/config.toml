@@ -1,0 +1,36 @@
+[user]
+name = "Mark Tyneway"
+email = "mark.tyneway@proton.me"
+
+[ui]
+default-command = "log"
+diff-editor = "nvim"
+editor = "nvim"
+pager = "delta"
+paginate = "auto"
+diff-formatter = ["difft", "--color=always", "$left", "$right"]
+
+[ui.diff]
+format = "git"
+
+[signing]
+sign-all = true
+backend = "gpg"
+key = "575BB6F525B0CF68"
+
+[git]
+auto-local-bookmark = true
+push-bookmark-prefix = "tynes/push-"
+
+[revset-aliases]
+"immutable_heads()" = "builtin_immutable_heads() | remote_bookmarks()"
+"trunk()" = "latest(remote_bookmarks(exact:\"origin/main\") | remote_bookmarks(exact:\"origin/master\"))"
+
+[aliases]
+l = ["log", "-r", "@::"]
+ll = ["log", "-r", "::@"]
+d = ["diff"]
+s = ["status"]
+n = ["new"]
+e = ["edit"]
+sq = ["squash"]
