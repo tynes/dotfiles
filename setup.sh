@@ -54,7 +54,7 @@ echo "Setting up AstroNvim v5..."
 [ -e ~/.cache/nvim ] && mv ~/.cache/nvim ~/.cache/nvim.bak && echo "Backed up ~/.cache/nvim to ~/.cache/nvim.bak"
 
 # Create symlink to AstroNvim v5 config
-CMD="ln -sf $PWD/nvim-config $HOME/.config/nvim"
+CMD="ln -sfn $PWD/nvim-config $HOME/.config/nvim"
 echo "RUNNING: $CMD"
 eval $CMD
 
@@ -71,7 +71,7 @@ mkdir -p ~/.config
 [ -e ~/.config/ghostty ] && mv ~/.config/ghostty ~/.config/ghostty.bak && echo "Backed up ~/.config/ghostty to ~/.config/ghostty.bak"
 
 # Create symlink to Ghostty config
-CMD="ln -sf $PWD/config/ghostty $HOME/.config/ghostty"
+CMD="ln -sfn $PWD/config/ghostty $HOME/.config/ghostty"
 echo "RUNNING: $CMD"
 eval $CMD
 
