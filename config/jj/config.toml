@@ -19,8 +19,10 @@ backend = "gpg"
 key = "575BB6F525B0CF68"
 
 [git]
-auto-local-bookmark = true
 push-bookmark-prefix = "tynes/push-"
+
+[remotes.origin]
+auto-track-bookmarks = "*"
 
 [revset-aliases]
 "immutable_heads()" = "builtin_immutable_heads() | remote_bookmarks()"
