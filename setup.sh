@@ -105,3 +105,13 @@ echo "RUNNING: $CMD"
 eval $CMD
 
 echo "Jujutsu setup complete!"
+
+# Rust tooling setup
+if command -v rustup &> /dev/null; then
+  echo "Setting up Rust development tools..."
+  rustup component add rust-analyzer
+  echo "Rust tooling setup complete!"
+else
+  echo "rustup not found - skipping rust-analyzer installation"
+  echo "Install rustup from https://rustup.rs/ to enable Rust support"
+fi
