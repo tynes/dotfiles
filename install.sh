@@ -62,6 +62,7 @@ install_packages() {
                 tree \
                 go \
                 node \
+                pnpm \
                 python@3 \
                 uv \
                 gh \
@@ -145,6 +146,9 @@ install_packages() {
 
             # Node.js - install from NodeSource
             install_node_linux
+
+            # pnpm - fast, disk space efficient package manager
+            install_pnpm_linux
 
             # uv - Python package manager
             install_uv_linux
@@ -345,6 +349,16 @@ install_node_linux() {
     info "Installing Node.js via NodeSource..."
     curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
     sudo apt install -y nodejs
+}
+
+install_pnpm_linux() {
+    if command -v pnpm &> /dev/null; then
+        info "pnpm already installed"
+        return
+    fi
+    info "Installing pnpm..."
+    curl -fsSL https://get.pnpm.io/install.sh | sh -
+    info "pnpm installed"
 }
 
 install_uv_linux() {
