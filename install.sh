@@ -76,6 +76,7 @@ install_packages() {
                 gemini-cli \
                 nvimpager \
                 moor \
+                watch \
                 tailscale \
                 ghostty \
                 gnupg \
@@ -109,6 +110,7 @@ install_packages() {
                 build-essential \
                 scdoc \
                 jq \
+                procps \
                 gnupg \
                 openssh-client \
                 openssh-server \
