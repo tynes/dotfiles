@@ -34,7 +34,7 @@ do
     mv -f $DEST $OLD/$FILE
   fi
 
-  CMD="ln -sf $PWD/$FILE $HOME/$FILE"
+  CMD="ln -sfn $PWD/$FILE $HOME/$FILE"
   echo "RUNNING: $CMD"
   eval $CMD
 done
@@ -48,7 +48,7 @@ fi
 echo "Setting up AstroNvim v5..."
 
 # Backup existing nvim directories
-[ -e ~/.config/nvim ] && mv ~/.config/nvim ~/.config/nvim.bak && echo "Backed up ~/.config/nvim to ~/.config/nvim.bak"
+[ -e ~/.config/nvim ] && rm -rf ~/.config/nvim.bak && mv ~/.config/nvim ~/.config/nvim.bak && echo "Backed up ~/.config/nvim to ~/.config/nvim.bak"
 [ -e ~/.local/share/nvim ] && mv ~/.local/share/nvim ~/.local/share/nvim.bak && echo "Backed up ~/.local/share/nvim to ~/.local/share/nvim.bak"
 [ -e ~/.local/state/nvim ] && mv ~/.local/state/nvim ~/.local/state/nvim.bak && echo "Backed up ~/.local/state/nvim to ~/.local/state/nvim.bak"
 [ -e ~/.cache/nvim ] && mv ~/.cache/nvim ~/.cache/nvim.bak && echo "Backed up ~/.cache/nvim to ~/.cache/nvim.bak"
@@ -68,7 +68,7 @@ echo "Setting up Ghostty terminal config..."
 mkdir -p ~/.config
 
 # Backup existing ghostty config if it exists
-[ -e ~/.config/ghostty ] && mv ~/.config/ghostty ~/.config/ghostty.bak && echo "Backed up ~/.config/ghostty to ~/.config/ghostty.bak"
+[ -e ~/.config/ghostty ] && rm -rf ~/.config/ghostty.bak && mv ~/.config/ghostty ~/.config/ghostty.bak && echo "Backed up ~/.config/ghostty to ~/.config/ghostty.bak"
 
 # Create symlink to Ghostty config
 CMD="ln -sfn $PWD/config/ghostty $HOME/.config/ghostty"
