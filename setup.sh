@@ -115,3 +115,4 @@ else
   echo "rustup not found - skipping rust-analyzer installation"
   echo "Install rustup from https://rustup.rs/ to enable Rust support"
 fi
+

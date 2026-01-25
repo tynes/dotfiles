@@ -84,7 +84,8 @@ install_packages() {
                 orbstack \
                 openssh \
                 keepassxc \
-                starship
+                starship \
+                worktrunk
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -200,6 +201,9 @@ install_packages() {
 
             # starship - cross-shell prompt
             install_starship_linux
+
+            # worktrunk - workspace management
+            install_worktrunk_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -684,6 +688,23 @@ install_starship_linux() {
     info "Installing starship from official installer..."
     curl -sS https://starship.rs/install.sh | sh -s -- -y
     info "starship installed"
+}
+
+install_worktrunk_linux() {
+    if command -v wt &> /dev/null; then
+        info "worktrunk already installed"
+        return
+    fi
+    info "Installing worktrunk via cargo..."
+
+    if ! command -v cargo &> /dev/null; then
+        error "Cargo is required to install worktrunk but not found"
+        return 1
+    fi
+
+    cargo install worktrunk
+
+    info "worktrunk installed"
 }
 
 # Install Rust/Cargo if needed for some tools

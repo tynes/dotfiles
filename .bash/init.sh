@@ -184,6 +184,11 @@ fi
 # This won't be added again if you remove it.
 source ~/.orbstack/shell/init.bash 2>/dev/null || :
 
+# worktrunk (wt)
+if command -v wt &> /dev/null; then
+    eval "$(wt config shell init bash)"
+fi
+
 # =============================================================================
 # zoxide (must be last)
 # =============================================================================
