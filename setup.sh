@@ -106,6 +106,19 @@ eval $CMD
 
 echo "Jujutsu setup complete!"
 
+# Worktrunk setup
+echo "Setting up Worktrunk config..."
+
+# Backup existing wt config if it exists
+[ -e ~/.config/wt.toml ] && mv ~/.config/wt.toml ~/.config/wt.toml.bak && echo "Backed up ~/.config/wt.toml to ~/.config/wt.toml.bak"
+
+# Create symlink to wt config
+CMD="ln -sf $PWD/config/wt.toml $HOME/.config/wt.toml"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Worktrunk setup complete!"
+
 # Rust tooling setup
 if command -v rustup &> /dev/null; then
   echo "Setting up Rust development tools..."
