@@ -57,6 +57,15 @@ return {
       n = {
         -- second key is the lefthand side of the map
 
+        -- LSP mappings
+        gd = { function() vim.lsp.buf.definition() end, desc = "Go to definition" },
+        gD = { function() vim.lsp.buf.declaration() end, desc = "Go to declaration" },
+        gr = { function() vim.lsp.buf.references() end, desc = "Go to references" },
+        gi = { function() vim.lsp.buf.implementation() end, desc = "Go to implementation" },
+        K = { function() vim.lsp.buf.hover() end, desc = "Hover documentation" },
+        ["<Leader>rn"] = { function() vim.lsp.buf.rename() end, desc = "Rename symbol" },
+        ["<Leader>ca"] = { function() vim.lsp.buf.code_action() end, desc = "Code action" },
+
         -- navigate buffer tabs
         ["]b"] = { function() require("astrocore.buffer").nav(vim.v.count1) end, desc = "Next buffer" },
         ["[b"] = { function() require("astrocore.buffer").nav(-vim.v.count1) end, desc = "Previous buffer" },
