@@ -86,7 +86,8 @@ install_packages() {
                 keepassxc \
                 starship \
                 worktrunk \
-                rclone
+                rclone \
+                gcalcli
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -208,6 +209,9 @@ install_packages() {
 
             # rclone - cloud storage sync
             install_rclone_linux
+
+            # gcalcli - Google Calendar CLI
+            install_gcalcli_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -722,6 +726,23 @@ install_rclone_linux() {
     curl https://rclone.org/install.sh | sudo bash
 
     info "rclone installed"
+}
+
+install_gcalcli_linux() {
+    if command -v gcalcli &> /dev/null; then
+        info "gcalcli already installed"
+        return
+    fi
+    info "Installing gcalcli..."
+
+    # Use uv tool install (similar to pipx) for isolated installation
+    if command -v uv &> /dev/null; then
+        uv tool install gcalcli
+    else
+        pip3 install --user gcalcli
+    fi
+
+    info "gcalcli installed"
 }
 
 # Install Rust/Cargo if needed for some tools
