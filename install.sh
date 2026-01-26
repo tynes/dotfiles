@@ -83,7 +83,6 @@ install_packages() {
                 gnupg \
                 orbstack \
                 openssh \
-                keepassxc \
                 starship \
                 worktrunk \
                 rclone \
@@ -118,7 +117,6 @@ install_packages() {
                 gnupg \
                 openssh-client \
                 openssh-server \
-                keepassxc \
                 openssl \
                 libssl-dev \
                 pkg-config
