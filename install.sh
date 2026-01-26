@@ -85,7 +85,8 @@ install_packages() {
                 openssh \
                 keepassxc \
                 starship \
-                worktrunk
+                worktrunk \
+                rclone
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -204,6 +205,9 @@ install_packages() {
 
             # worktrunk - workspace management
             install_worktrunk_linux
+
+            # rclone - cloud storage sync
+            install_rclone_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -705,6 +709,19 @@ install_worktrunk_linux() {
     cargo install worktrunk
 
     info "worktrunk installed"
+}
+
+install_rclone_linux() {
+    if command -v rclone &> /dev/null; then
+        info "rclone already installed"
+        return
+    fi
+    info "Installing rclone..."
+
+    # Use rclone's official install script
+    curl https://rclone.org/install.sh | sudo bash
+
+    info "rclone installed"
 }
 
 # Install Rust/Cargo if needed for some tools
