@@ -18,5 +18,6 @@ The setup script will back up your existing dotfiles to `/tmp/dotfile_backup` an
 
 ## Compatibility
 
-These dotfiles are tested and known to work on macOS (using `homebrew`).
-Linux support planned for the future. Apple silicon is just too good unfortunately.
+These dotfiles are tested and known to work on macOS (using `homebrew`)
+and sort of debian. arch linux support planned for the future.
+Apple silicon is just too good unfortunately.
