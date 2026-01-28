@@ -1,1 +1,5 @@
 shell-integration-features = ssh-terminfo
+
+# Allow clipboard access for OSC 52 (copy/paste over SSH)
+clipboard-read = allow
+clipboard-write = allow
