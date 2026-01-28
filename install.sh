@@ -86,7 +86,8 @@ install_packages() {
                 starship \
                 worktrunk \
                 rclone \
-                gcalcli
+                gcalcli \
+                wget
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -119,7 +120,8 @@ install_packages() {
                 openssh-server \
                 openssl \
                 libssl-dev \
-                pkg-config
+                pkg-config \
+                wget
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
