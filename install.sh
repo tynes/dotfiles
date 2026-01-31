@@ -87,7 +87,8 @@ install_packages() {
                 worktrunk \
                 rclone \
                 gcalcli \
-                wget
+                wget \
+                hcloud
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -212,6 +213,9 @@ install_packages() {
 
             # gcalcli - Google Calendar CLI
             install_gcalcli_linux
+
+            # hcloud - Hetzner Cloud CLI
+            install_hcloud_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -743,6 +747,31 @@ install_gcalcli_linux() {
     fi
 
     info "gcalcli installed"
+}
+
+install_hcloud_linux() {
+    if command -v hcloud &> /dev/null; then
+        info "hcloud already installed"
+        return
+    fi
+    info "Installing Hetzner Cloud CLI from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    HCLOUD_VERSION=$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | jq -r '.tag_name')
+
+    if [ -z "$HCLOUD_VERSION" ] || [ "$HCLOUD_VERSION" = "null" ]; then
+        error "Failed to get latest hcloud version"
+        return 1
+    fi
+
+    info "Downloading hcloud $HCLOUD_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -fL "https://github.com/hetznercloud/cli/releases/download/${HCLOUD_VERSION}/hcloud-linux-amd64.tar.gz" -o /tmp/hcloud.tar.gz
+    tar -xzf /tmp/hcloud.tar.gz -C ~/.local/bin hcloud
+    chmod +x ~/.local/bin/hcloud
+    rm /tmp/hcloud.tar.gz
+
+    info "hcloud installed to ~/.local/bin/hcloud"
 }
 
 # Install Rust/Cargo if needed for some tools
