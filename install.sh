@@ -493,11 +493,11 @@ install_gcloud_linux() {
     fi
     info "Installing Google Cloud CLI..."
 
-    # Add the Cloud SDK distribution URI as a package source
-    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+    # Import the Google Cloud public key first (before adding the source)
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
 
-    # Import the Google Cloud public key
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+    # Add the Cloud SDK distribution URI as a package source
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list > /dev/null
 
     # Update and install the Cloud SDK
     sudo apt update && sudo apt install -y google-cloud-cli
