@@ -92,6 +92,9 @@ install_packages() {
 
             # Foundry - Ethereum development toolkit
             install_foundry
+
+            # Amp - AI coding agent
+            install_amp
             ;;
         debian)
             info "Updating apt cache..."
@@ -216,6 +219,9 @@ install_packages() {
 
             # hcloud - Hetzner Cloud CLI
             install_hcloud_linux
+
+            # Amp - AI coding agent
+            install_amp
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -772,6 +778,19 @@ install_hcloud_linux() {
     rm /tmp/hcloud.tar.gz
 
     info "hcloud installed to ~/.local/bin/hcloud"
+}
+
+install_amp() {
+    if command -v amp &> /dev/null; then
+        info "amp already installed"
+        return
+    fi
+    info "Installing Amp Code..."
+
+    # Use official install script (works on macOS, Linux, WSL)
+    curl -fsSL https://ampcode.com/install.sh | bash
+
+    info "Amp Code installed"
 }
 
 # Install Rust/Cargo if needed for some tools
