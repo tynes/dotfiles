@@ -390,6 +390,8 @@ install_uv_linux() {
     fi
     info "Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
+    # Add ~/.local/bin to PATH to make uv available in current session
+    export PATH="$HOME/.local/bin:$PATH"
 }
 
 install_foundry() {
@@ -748,8 +750,11 @@ install_gcalcli_linux() {
     # Use uv tool install (similar to pipx) for isolated installation
     if command -v uv &> /dev/null; then
         uv tool install gcalcli
+    elif command -v pipx &> /dev/null; then
+        pipx install gcalcli
     else
-        pip3 install --user gcalcli
+        error "uv or pipx is required to install gcalcli but not found"
+        return 1
     fi
 
     info "gcalcli installed"
