@@ -798,6 +798,8 @@ install_rust() {
     if ! command -v cargo &> /dev/null; then
         info "Installing Rust..."
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        # Source cargo env to make it available in current session
+        source "$HOME/.cargo/env"
     fi
 }
 
