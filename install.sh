@@ -673,6 +673,7 @@ install_ghostty_linux() {
 install_docker_linux() {
     if command -v docker &> /dev/null; then
         info "Docker already installed"
+        configure_docker_permissions
         return
     fi
     info "Installing Docker from official repository..."
@@ -698,6 +699,27 @@ EOF
     sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
     info "Docker installed"
+    configure_docker_permissions
+}
+
+configure_docker_permissions() {
+    info "Configuring Docker permissions..."
+
+    # Check if user is already in docker group
+    if groups | grep -q docker; then
+        info "User already in docker group"
+        return
+    fi
+
+    # Try to add user to docker group (will fail gracefully if no sudo access)
+    if sudo usermod -aG docker "$USER" 2>/dev/null; then
+        info "User added to docker group"
+        warn "You need to log out and log back in for the docker group changes to take effect"
+        warn "Or run: newgrp docker"
+    else
+        warn "Could not add user to docker group (sudo access may be required)"
+        warn "You can manually run: sudo usermod -aG docker \$USER"
+    fi
 }
 
 install_starship_linux() {
