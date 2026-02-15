@@ -1,0 +1,26 @@
+# ~/.tigrc
+#
+set diff-options = --show-signature
+set log-options = --show-signature
+
+# --- Appearance ---
+set line-graphics = utf-8
+set main-view-date = relative
+set vertical-split = auto
+set tab-size = 4
+# Line numbers per view
+set blame-view-line-number = yes
+set pager-view = line-number:yes,interval=1 text
+set diff-view = line-number:yes,interval=1 text
+
+# --- Keybindings ---
+bind generic + @sh -c "printf '%s' %(commit) | universal-copy"
+
+# Interactive Rebase from selected commit
+bind main R !git rebase -i %(commit)
+
+# Verify GPG signature of selected commit
+bind main V !git verify-commit %(commit)
+
+# Mouse support
+set mouse = yes

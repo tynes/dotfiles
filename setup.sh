@@ -119,6 +119,22 @@ eval $CMD
 
 echo "Worktrunk setup complete!"
 
+# Bin directory setup
+echo "Setting up bin directory..."
+
+# Backup existing bin directory if it exists and is not a symlink
+[ -e ~/bin ] && [ ! -L ~/bin ] && mv ~/bin ~/bin.bak && echo "Backed up ~/bin to ~/bin.bak"
+
+# Remove existing symlink if present
+[ -L ~/bin ] && rm ~/bin
+
+# Create symlink to bin directory
+CMD="ln -sfn $PWD/bin $HOME/bin"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Bin directory setup complete!"
+
 # Rust tooling setup
 if command -v rustup &> /dev/null; then
   echo "Setting up Rust development tools..."
