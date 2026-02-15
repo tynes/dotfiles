@@ -6,6 +6,11 @@ elif command -v xclip >/dev/null; then
     xclip -selection c
 elif command -v wl-copy >/dev/null; then
     wl-copy
-else
+elif command -v clip.exe >/dev/null; then
     clip.exe
+else
+    # OSC 52 escape sequence — tells the terminal emulator to set the clipboard.
+    # Works over SSH and inside tmux (requires set-clipboard on / allow-passthrough on).
+    data=$(base64 | tr -d '\n')
+    printf '\033]52;c;%s\a' "$data"
 fi
