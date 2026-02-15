@@ -40,7 +40,7 @@ export PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'
 # =============================================================================
 
 function src() {
-    source ~/.bashrc
+    source "$HOME/.profile"
 }
 
 function psg() {
