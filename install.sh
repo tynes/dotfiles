@@ -90,6 +90,9 @@ install_packages() {
                 wget \
                 hcloud
 
+            # Ensure 'python' command points to python3
+            install_python_symlink_macos
+
             # Foundry - Ethereum development toolkit
             install_foundry
 
@@ -115,6 +118,7 @@ install_packages() {
                 python3 \
                 python3-pip \
                 python3-venv \
+                python-is-python3 \
                 build-essential \
                 scdoc \
                 jq \
@@ -228,6 +232,21 @@ install_packages() {
             exit 1
             ;;
     esac
+}
+
+install_python_symlink_macos() {
+    if command -v python &> /dev/null; then
+        info "'python' command already available"
+        return
+    fi
+    info "Creating 'python' symlink to python3..."
+    BREW_PREFIX=$(brew --prefix)
+    if [ -x "$BREW_PREFIX/bin/python3" ]; then
+        ln -sf "$BREW_PREFIX/bin/python3" "$BREW_PREFIX/bin/python"
+        info "'python' now points to python3"
+    else
+        warn "python3 not found in Homebrew prefix, skipping symlink"
+    fi
 }
 
 install_neovim_linux() {
