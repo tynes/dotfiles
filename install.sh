@@ -555,20 +555,9 @@ install_claude_code_linux() {
     fi
     info "Installing Claude Code..."
 
-    # Check if Node.js is available
-    if ! command -v npm &> /dev/null; then
-        error "Node.js/npm is required to install Claude Code but not found"
-        return 1
-    fi
+    curl -fsSL https://claude.ai/install.sh | bash
 
-    # Configure npm to use ~/.local for global installs (binaries go to ~/.local/bin)
-    mkdir -p ~/.local
-    npm config set prefix ~/.local
-
-    # Install Claude Code via npm
-    npm install -g @anthropic-ai/claude-code
-
-    info "Claude Code installed to ~/.local/bin"
+    info "Claude Code installed"
 }
 
 install_codex_linux() {
