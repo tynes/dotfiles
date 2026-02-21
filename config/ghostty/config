@@ -1,5 +1,8 @@
 shell-integration-features = ssh-terminfo
 
+# Use native macOS tabs so AeroSpace doesn't treat each tab as a separate tiled window
+macos-titlebar-style = tabs
+
 # Allow clipboard access for OSC 52 (copy/paste over SSH)
 clipboard-read = allow
 clipboard-write = allow
