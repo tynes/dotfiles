@@ -218,3 +218,34 @@ on-mode-changed = []
     alt-shift-k = ['join-with up', 'mode main']
     alt-shift-l = ['join-with right', 'mode main']
 
+[[on-window-detected]]
+    if.app-id = 'com.mitchellh.ghostty'
+    run = 'move-node-to-workspace T' # mnemonics T - Terminal
+
+[[on-window-detected]]
+    if.app-id = 'com.google.Chrome'
+    run = 'move-node-to-workspace B' # mnemonics B - Browser
+
+[[on-window-detected]]
+    if.app-id = 'org.whispersystems.signal-desktop'
+    run = 'move-node-to-workspace C' # mnemonics C - Chat
+
+[[on-window-detected]]
+    if.app-id = 'ru.keepcoder.Telegram'
+    run = 'move-node-to-workspace C' # mnemonics C - Chat
+
+[[on-window-detected]]
+    if.app-id = 'net.whatsapp.WhatsApp'
+    run = 'move-node-to-workspace C' # mnemonics C - Chat
+
+[[on-window-detected]]
+    if.app-id = 'com.apple.MobileSMS'
+    run = 'move-node-to-workspace C' # mnemonics C - Chat
+
+[[on-window-detected]]
+    if.app-id = 'md.obsidian'
+    run = 'move-node-to-workspace O' # mnemonics O - Obsidian
+
+[[on-window-detected]]
+    if.app-id = 'notion.id'
+    run = 'move-node-to-workspace N' # mnemonics N - Notion

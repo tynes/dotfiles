@@ -44,6 +44,17 @@ if [[ "$(uname)" == 'Darwin' ]]; then
   ln -sf "$PWD/settings.json" "$HOME/Library/Application\ Support/Code/User/settings.json"
 fi
 
+# AeroSpace window manager (macOS only)
+if [[ "$(uname)" == 'Darwin' ]]; then
+  echo "Setting up AeroSpace config..."
+  [ -e ~/.aerospace.toml ] && [ ! -L ~/.aerospace.toml ] && mv ~/.aerospace.toml ~/.aerospace.toml.bak && echo "Backed up ~/.aerospace.toml to ~/.aerospace.toml.bak"
+  [ -L ~/.aerospace.toml ] && rm ~/.aerospace.toml
+  CMD="ln -sf $PWD/aerospace.toml $HOME/.aerospace.toml"
+  echo "RUNNING: $CMD"
+  eval $CMD
+  echo "AeroSpace setup complete!"
+fi
+
 # AstroNvim v5 setup
 echo "Setting up AstroNvim v5..."
 
