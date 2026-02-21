@@ -32,6 +32,11 @@ if [ -d "$HOME/.foundry/bin" ]; then
     PATH="$PATH:$HOME/.foundry/bin"
 fi
 
+# bun
+if [ -d "$HOME/.bun/bin" ]; then
+    PATH="$PATH:$HOME/.bun/bin"
+fi
+
 # cargo rust
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 

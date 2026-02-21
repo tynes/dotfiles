@@ -63,6 +63,7 @@ install_packages() {
                 go \
                 node \
                 pnpm \
+                bun \
                 python@3 \
                 uv \
                 gh \
@@ -160,6 +161,9 @@ install_packages() {
 
             # pnpm - fast, disk space efficient package manager
             install_pnpm_linux
+
+            # bun - JavaScript runtime and package manager
+            install_bun_linux
 
             # uv - Python package manager
             install_uv_linux
@@ -400,6 +404,16 @@ install_pnpm_linux() {
     info "Installing pnpm..."
     curl -fsSL https://get.pnpm.io/install.sh | sh -
     info "pnpm installed"
+}
+
+install_bun_linux() {
+    if command -v bun &> /dev/null; then
+        info "bun already installed"
+        return
+    fi
+    info "Installing bun..."
+    curl -fsSL https://bun.sh/install | bash
+    info "bun installed"
 }
 
 install_uv_linux() {
