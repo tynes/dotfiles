@@ -225,6 +225,11 @@ on-mode-changed = []
 
 [[on-window-detected]]
     if.app-id = 'com.google.Chrome'
+    if.window-title-regex-substring = 'Rabby Wallet'
+    run = 'layout floating'
+
+[[on-window-detected]]
+    if.app-id = 'com.google.Chrome'
     run = 'move-node-to-workspace B' # mnemonics B - Browser
 
 [[on-window-detected]]
