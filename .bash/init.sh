@@ -166,7 +166,11 @@ fi
 # git completion
 if command -v brew &> /dev/null; then
     source $(brew --prefix)/etc/bash_completion.d/git-completion.bash
+elif [ -f /usr/share/bash-completion/completions/git ]; then
+    source /usr/share/bash-completion/completions/git
 fi
+# enable git completions for the 'g' alias
+__git_complete g __git_main 2>/dev/null
 
 # Bitwarden SSH agent
 function bw_ssh_agent() {
