@@ -43,6 +43,7 @@ install_packages() {
     case $OS in
         macos)
             install_homebrew
+            brew tap oven-sh/bun
             info "Installing packages via Homebrew..."
             brew install \
                 eza \
