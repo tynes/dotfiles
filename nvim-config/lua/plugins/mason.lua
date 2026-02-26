@@ -12,6 +12,7 @@ return {
         -- install language servers
         "lua-language-server",
         "typescript-language-server",
+        "nomicfoundation-solidity-language-server",
 
         -- install formatters
         "stylua",

@@ -43,6 +43,13 @@ return {
     ---@diagnostic disable: missing-fields
     config = {
       -- clangd = { capabilities = { offsetEncoding = "utf-8" } },
+      solidity_ls_nomicfoundation = {
+        settings = {
+          solidity = {
+            formatter = "forge",
+          },
+        },
+      },
     },
     -- customize how language servers are attached
     handlers = {
