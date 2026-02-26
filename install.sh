@@ -90,6 +90,7 @@ install_packages() {
                 rclone \
                 gcalcli \
                 wget \
+                semgrep \
                 hcloud
 
             # Ensure 'python' command points to python3
@@ -225,6 +226,9 @@ install_packages() {
 
             # gcalcli - Google Calendar CLI
             install_gcalcli_linux
+
+            # semgrep - static analysis
+            install_semgrep_linux
 
             # hcloud - Hetzner Cloud CLI
             install_hcloud_linux
@@ -803,6 +807,26 @@ install_gcalcli_linux() {
     fi
 
     info "gcalcli installed"
+}
+
+install_semgrep_linux() {
+    if command -v semgrep &> /dev/null; then
+        info "semgrep already installed"
+        return
+    fi
+    info "Installing semgrep..."
+
+    # Use uv tool install (similar to pipx) for isolated installation
+    if command -v uv &> /dev/null; then
+        uv tool install semgrep
+    elif command -v pipx &> /dev/null; then
+        pipx install semgrep
+    else
+        error "uv or pipx is required to install semgrep but not found"
+        return 1
+    fi
+
+    info "semgrep installed"
 }
 
 install_hcloud_linux() {
