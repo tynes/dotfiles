@@ -6,3 +6,5 @@ macos-titlebar-style = tabs
 # Allow clipboard access for OSC 52 (copy/paste over SSH)
 clipboard-read = allow
 clipboard-write = allow
+
+unfocused-split-opacity = 0.55
