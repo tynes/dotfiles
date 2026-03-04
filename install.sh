@@ -91,7 +91,8 @@ install_packages() {
                 gcalcli \
                 wget \
                 semgrep \
-                hcloud
+                hcloud \
+                protobuf
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
@@ -232,6 +233,9 @@ install_packages() {
 
             # hcloud - Hetzner Cloud CLI
             install_hcloud_linux
+
+            # protobuf - Protocol Buffers compiler
+            install_protobuf_linux
 
             # Amp - AI coding agent
             install_amp
@@ -852,6 +856,33 @@ install_hcloud_linux() {
     rm /tmp/hcloud.tar.gz
 
     info "hcloud installed to ~/.local/bin/hcloud"
+}
+
+install_protobuf_linux() {
+    if command -v protoc &> /dev/null; then
+        info "protoc already installed"
+        return
+    fi
+    info "Installing protoc from GitHub releases..."
+
+    # Get the latest version tag from GitHub API
+    PROTOC_VERSION=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | jq -r '.tag_name')
+
+    if [ -z "$PROTOC_VERSION" ] || [ "$PROTOC_VERSION" = "null" ]; then
+        error "Failed to get latest protoc version"
+        return 1
+    fi
+
+    # Version in filename doesn't have 'v' prefix
+    PROTOC_VERSION_NUM=${PROTOC_VERSION#v}
+
+    info "Downloading protoc $PROTOC_VERSION..."
+    curl -fL "https://github.com/protocolbuffers/protobuf/releases/download/${PROTOC_VERSION}/protoc-${PROTOC_VERSION_NUM}-linux-x86_64.zip" -o /tmp/protoc.zip
+    sudo unzip -o /tmp/protoc.zip -d /usr/local bin/protoc
+    sudo unzip -o /tmp/protoc.zip -d /usr/local 'include/*'
+    rm /tmp/protoc.zip
+
+    info "protoc installed to /usr/local/bin/protoc"
 }
 
 install_amp() {
