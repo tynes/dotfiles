@@ -75,6 +75,7 @@ alias e='nvim'
 # shorter cat
 alias ca='BAT_PAGER=never bat'
 # shorter less
+export MOOR='--wrap --statusbar=bold'
 alias les='moor'
 # shorter diff
 alias dif='difft'
