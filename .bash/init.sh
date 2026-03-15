@@ -32,8 +32,9 @@ export HISTFILESIZE=100000
 
 # After each command, append to the history file and reread it to share
 # history between running terminals.
-export PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'
-'}history -a; history -c; history -r"
+export -n PROMPT_COMMAND 2>/dev/null
+__history_sync() { history -a; history -c; history -r; }
+PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND;}__history_sync"
 
 # =============================================================================
 # Aliases
