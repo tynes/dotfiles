@@ -29,6 +29,7 @@ return {
       disabled = { -- disable formatting capabilities for the listed language servers
         -- disable lua_ls formatting capability if you want to use StyLua to format your lua code
         -- "lua_ls",
+        "pyright",
       },
       timeout_ms = 1000, -- default format timeout
       -- filter = function(client) -- fully override the default formatting function
@@ -43,6 +44,27 @@ return {
     ---@diagnostic disable: missing-fields
     config = {
       -- clangd = { capabilities = { offsetEncoding = "utf-8" } },
+      pyright = {
+        before_init = function(_, config)
+          local venv = vim.fn.finddir(".venv", vim.fn.getcwd() .. ";")
+          if venv ~= "" then
+            config.settings.python.pythonPath = vim.fn.fnamemodify(venv, ":p") .. "bin/python"
+          end
+        end,
+        settings = {
+          python = {
+            analysis = {
+              typeCheckingMode = "basic",
+            },
+          },
+        },
+      },
+      ruff = {
+        on_attach = function(client)
+          -- Disable ruff hover in favor of pyright
+          client.server_capabilities.hoverProvider = false
+        end,
+      },
       solidity_ls_nomicfoundation = {
         settings = {
           solidity = {
