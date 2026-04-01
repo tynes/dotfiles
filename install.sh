@@ -92,7 +92,9 @@ install_packages() {
                 wget \
                 semgrep \
                 hcloud \
-                protobuf
+                protobuf \
+                openjdk@21 \
+                maven
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
@@ -236,6 +238,12 @@ install_packages() {
 
             # protobuf - Protocol Buffers compiler
             install_protobuf_linux
+
+            # Java - OpenJDK via Adoptium
+            install_java_linux
+
+            # Maven - Java build tool
+            install_maven_linux
 
             # Amp - AI coding agent
             install_amp
@@ -883,6 +891,34 @@ install_protobuf_linux() {
     rm /tmp/protoc.zip
 
     info "protoc installed to /usr/local/bin/protoc"
+}
+
+install_java_linux() {
+    if command -v java &> /dev/null; then
+        info "Java already installed"
+        return
+    fi
+    info "Installing Eclipse Temurin (Adoptium) JDK..."
+
+    # Add Adoptium GPG key and repository
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo "$VERSION_CODENAME") main" | sudo tee /etc/apt/sources.list.d/adoptium.list > /dev/null
+
+    sudo apt update
+    sudo apt install -y temurin-21-jdk
+
+    info "Java (Temurin 21) installed"
+}
+
+install_maven_linux() {
+    if command -v mvn &> /dev/null; then
+        info "Maven already installed"
+        return
+    fi
+    info "Installing Maven..."
+    sudo apt install -y maven
+    info "Maven installed"
 }
 
 install_amp() {

@@ -21,10 +21,22 @@ if command -v nvim &> /dev/null; then
     export EDITOR=nvim
 fi
 
+# Java (Homebrew OpenJDK on macOS, Adoptium on Linux)
+if [ -d /opt/homebrew/opt/openjdk@21 ]; then
+    export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
+elif [ -d /usr/lib/jvm/temurin-21-jdk-amd64 ]; then
+    export JAVA_HOME="/usr/lib/jvm/temurin-21-jdk-amd64"
+fi
+
 # PATH setup
 # homebrew - add to PATH first so brew command works
 if [ -d /opt/homebrew/bin ]; then
     PATH="/opt/homebrew/bin:$PATH"
+fi
+
+# Java - ensure Homebrew OpenJDK is on PATH (symlinked into homebrew prefix)
+if [ -n "$JAVA_HOME" ] && [ -d "$JAVA_HOME/bin" ]; then
+    PATH="$JAVA_HOME/bin:$PATH"
 fi
 
 # import foundry tooling
