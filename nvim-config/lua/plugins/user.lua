@@ -8,4 +8,9 @@ return {
     "rebelot/kanagawa.nvim",
     opts = {},
   },
+  -- Unpin aerial.nvim to get v3.1.0+ fix for treesitter on Neovim 0.12+
+  {
+    "stevearc/aerial.nvim",
+    version = false,
+  },
 }
