@@ -130,6 +130,23 @@ eval $CMD
 
 echo "Worktrunk setup complete!"
 
+# uv (Python package manager) config setup
+echo "Setting up uv config..."
+
+# Ensure .config/uv directory exists
+mkdir -p ~/.config/uv
+
+# Backup existing uv config if it exists
+[ -e ~/.config/uv/uv.toml ] && [ ! -L ~/.config/uv/uv.toml ] && mv ~/.config/uv/uv.toml ~/.config/uv/uv.toml.bak && echo "Backed up ~/.config/uv/uv.toml to ~/.config/uv/uv.toml.bak"
+[ -L ~/.config/uv/uv.toml ] && rm ~/.config/uv/uv.toml
+
+# Create symlink to uv config
+CMD="ln -sf $PWD/config/uv/uv.toml $HOME/.config/uv/uv.toml"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "uv config setup complete!"
+
 # Bin directory setup
 echo "Setting up bin directory..."
 
