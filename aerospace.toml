@@ -260,3 +260,7 @@ on-mode-changed = []
 [[on-window-detected]]
     if.app-id = 'notion.id'
     run = 'move-node-to-workspace N' # mnemonics N - Notion
+
+[[on-window-detected]]
+    if.app-id = 'ch.protonmail.desktop'
+    run = 'move-node-to-workspace M' # mnemonics M - Mail
