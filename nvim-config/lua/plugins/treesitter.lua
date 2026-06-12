@@ -1,10 +1,9 @@
-if true then return {} end -- WARN: REMOVE THIS LINE TO ACTIVATE THIS FILE
-
 -- Customize Treesitter
 
 ---@type LazySpec
 return {
   "nvim-treesitter/nvim-treesitter",
+  version = false, -- track latest master; AstroNvim's pin is incompatible with nvim 0.12
   opts = {
     ensure_installed = {
       "lua",
