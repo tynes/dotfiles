@@ -104,6 +104,9 @@ install_packages() {
 
             # Amp - AI coding agent
             install_amp
+
+            # Grok - xAI coding agent CLI
+            install_grok
             ;;
         debian)
             info "Updating apt cache..."
@@ -247,6 +250,9 @@ install_packages() {
 
             # Amp - AI coding agent
             install_amp
+
+            # Grok - xAI coding agent CLI
+            install_grok
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -932,6 +938,19 @@ install_amp() {
     curl -fsSL https://ampcode.com/install.sh | bash
 
     info "Amp Code installed"
+}
+
+install_grok() {
+    if command -v grok &> /dev/null || [ -x "$HOME/.grok/bin/grok" ]; then
+        info "Grok CLI already installed"
+        return
+    fi
+    info "Installing Grok CLI..."
+
+    # Official xAI installer (macOS, Linux, WSL); installs to ~/.grok
+    curl -fsSL https://x.ai/cli/install.sh | bash
+
+    info "Grok CLI installed to ~/.grok/bin"
 }
 
 # Install Rust/Cargo if needed for some tools

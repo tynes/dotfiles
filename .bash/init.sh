@@ -195,6 +195,12 @@ if command -v wt &> /dev/null; then
     eval "$(wt config shell init bash)"
 fi
 
+# Grok CLI (installs to ~/.grok via https://x.ai/cli/install.sh)
+if [ -d "$HOME/.grok/bin" ]; then
+    export PATH="$HOME/.grok/bin:$PATH"
+    [ -r "$HOME/.grok/completions/bash/grok.bash" ] && source "$HOME/.grok/completions/bash/grok.bash"
+fi
+
 # =============================================================================
 # zoxide (must be last)
 # =============================================================================
