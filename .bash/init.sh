@@ -201,6 +201,11 @@ if [ -d "$HOME/.grok/bin" ]; then
     [ -r "$HOME/.grok/completions/bash/grok.bash" ] && source "$HOME/.grok/completions/bash/grok.bash"
 fi
 
+# opencode (installs to ~/.opencode via https://opencode.ai/install)
+if [ -d "$HOME/.opencode/bin" ]; then
+    export PATH="$HOME/.opencode/bin:$PATH"
+fi
+
 # =============================================================================
 # zoxide (must be last)
 # =============================================================================

@@ -972,8 +972,9 @@ install_opencode() {
     fi
     info "Installing opencode..."
 
-    # Official installer (works on macOS, Linux, WSL)
-    curl -fsSL https://opencode.ai/install | bash
+    # Official installer (works on macOS, Linux, WSL).
+    # --no-modify-path: PATH for ~/.opencode/bin is handled in .bash/init.sh.
+    curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
 
     info "opencode installed"
 }
@@ -985,8 +986,21 @@ install_pi() {
     fi
     info "Installing pi..."
 
-    # Official pi.dev installer (works on macOS, Linux, WSL)
-    curl -fsSL https://pi.dev/install.sh | sh
+    if ! command -v npm &> /dev/null; then
+        error "Node.js/npm is required to install pi but not found"
+        return 1
+    fi
+
+    # The official pi.dev install script (curl https://pi.dev/install.sh | sh)
+    # prompts on /dev/tty for an install/reinstall menu, so it can't run
+    # unattended. Install the npm package directly with the same flags the
+    # script uses under the hood, which is fully non-interactive on macOS/Linux.
+    # On Linux, target a user-writable global prefix (matches gemini-cli setup).
+    if [[ "$OS" == "debian" ]]; then
+        mkdir -p ~/.local
+        npm config set prefix ~/.local
+    fi
+    npm install -g --ignore-scripts --min-release-age=0 --no-fund --no-audit @earendil-works/pi-coding-agent
 
     info "pi installed"
 }
