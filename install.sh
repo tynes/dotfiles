@@ -107,6 +107,12 @@ install_packages() {
 
             # Grok - xAI coding agent CLI
             install_grok
+
+            # opencode - AI coding agent
+            install_opencode
+
+            # pi - AI coding agent
+            install_pi
             ;;
         debian)
             info "Updating apt cache..."
@@ -253,6 +259,12 @@ install_packages() {
 
             # Grok - xAI coding agent CLI
             install_grok
+
+            # opencode - AI coding agent
+            install_opencode
+
+            # pi - AI coding agent
+            install_pi
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -951,6 +963,32 @@ install_grok() {
     curl -fsSL https://x.ai/cli/install.sh | bash
 
     info "Grok CLI installed to ~/.grok/bin"
+}
+
+install_opencode() {
+    if command -v opencode &> /dev/null; then
+        info "opencode already installed"
+        return
+    fi
+    info "Installing opencode..."
+
+    # Official installer (works on macOS, Linux, WSL)
+    curl -fsSL https://opencode.ai/install | bash
+
+    info "opencode installed"
+}
+
+install_pi() {
+    if command -v pi &> /dev/null; then
+        info "pi already installed"
+        return
+    fi
+    info "Installing pi..."
+
+    # Official pi.dev installer (works on macOS, Linux, WSL)
+    curl -fsSL https://pi.dev/install.sh | sh
+
+    info "pi installed"
 }
 
 # Install Rust/Cargo if needed for some tools
