@@ -94,7 +94,8 @@ install_packages() {
                 hcloud \
                 protobuf \
                 openjdk@21 \
-                maven
+                maven \
+                superfile
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
@@ -265,6 +266,9 @@ install_packages() {
 
             # pi - AI coding agent
             install_pi
+
+            # superfile - terminal file manager
+            install_superfile_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -1003,6 +1007,19 @@ install_pi() {
     npm install -g --ignore-scripts --min-release-age=0 --no-fund --no-audit @earendil-works/pi-coding-agent
 
     info "pi installed"
+}
+
+install_superfile_linux() {
+    if command -v spf &> /dev/null; then
+        info "superfile already installed"
+        return
+    fi
+    info "Installing superfile..."
+
+    # Official installer: https://github.com/yorukot/superfile
+    bash -c "$(curl -sLo- https://superfile.dev/install.sh)"
+
+    info "superfile installed"
 }
 
 # Install Rust/Cargo if needed for some tools
