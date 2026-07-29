@@ -95,6 +95,8 @@ install_packages() {
                 protobuf \
                 openjdk@21 \
                 maven \
+                php \
+                fswatch \
                 superfile
 
             # Ensure 'python' command points to python3
@@ -145,7 +147,10 @@ install_packages() {
                 openssl \
                 libssl-dev \
                 pkg-config \
-                wget
+                wget \
+                php \
+                php-cli \
+                php-common
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
