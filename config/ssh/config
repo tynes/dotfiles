@@ -1,0 +1,46 @@
+# Global SSH client defaults.
+# Per-host overrides can go in ~/.ssh/config.d/*.conf via the Include below
+# (that directory is untracked, so machine/host-specific secrets stay out of git).
+Include ~/.ssh/config.d/*.conf
+
+Host *
+    # Must come before the macOS-only keywords below: some non-Apple
+    # OpenSSH builds (e.g. Homebrew's) reject unknown keywords outright
+    # unless IgnoreUnknown is registered first.
+    IgnoreUnknown AddKeysToAgent,UseKeychain,UseRoaming
+
+    # macOS Keychain integration for passphrase-protected keys
+    AddKeysToAgent yes
+    UseKeychain yes
+
+    # Verify host keys instead of trusting on first use silently,
+    # and keep known_hosts entries hashed so a leaked file doesn't
+    # reveal which hosts you connect to.
+    StrictHostKeyChecking ask
+    HashKnownHosts yes
+    VisualHostKey yes
+    CheckHostIP yes
+    UpdateHostKeys yes
+
+    # Don't leak your agent or X11 session to remote hosts by default.
+    ForwardAgent no
+    ForwardX11 no
+    ForwardX11Trusted no
+
+    # Don't let a remote host trigger commands on the local machine.
+    PermitLocalCommand no
+
+    # Prefer modern, authenticated-encryption algorithms only.
+    KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+    Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+    MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256
+    HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256
+    PubkeyAcceptedAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256
+
+    # Never fall back to password/keyboard-interactive auth silently.
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    Compression no

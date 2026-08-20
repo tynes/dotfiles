@@ -147,6 +147,27 @@ eval $CMD
 
 echo "uv config setup complete!"
 
+# SSH client config setup
+echo "Setting up SSH client config..."
+
+# Ensure ~/.ssh exists with correct permissions
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+# Backup existing ssh config if it's a real file (not already our symlink)
+[ -e ~/.ssh/config ] && [ ! -L ~/.ssh/config ] && mv ~/.ssh/config ~/.ssh/config.bak && echo "Backed up ~/.ssh/config to ~/.ssh/config.bak"
+[ -L ~/.ssh/config ] && rm ~/.ssh/config
+
+# Create symlink to the tracked, hardened ssh config
+CMD="ln -sf $PWD/config/ssh/config $HOME/.ssh/config"
+echo "RUNNING: $CMD"
+eval $CMD
+
+# SSH only trusts config files that aren't group/world writable
+chmod 600 "$PWD/config/ssh/config"
+
+echo "SSH config setup complete!"
+
 # Bin directory setup
 echo "Setting up bin directory..."
 
