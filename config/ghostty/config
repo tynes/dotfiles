@@ -8,3 +8,5 @@ clipboard-read = allow
 clipboard-write = allow
 
 unfocused-split-opacity = 0.55
+
+font-feature = -calt, -liga, -dlig
