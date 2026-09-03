@@ -100,9 +100,6 @@ alias dc='docker-compose'
 alias dclean="docker images -f 'dangling=true' | xargs docker rmi"
 alias dcleans="docker ps -a --format='{{.ID}}' | xargs docker rm"
 
-# Add tab completion for SSH hostnames based on ~/.ssh/config, ignoring wildcards
-[ -e "$HOME/.ssh/config" ] && complete -o "default" -o "nospace" -W "$(grep "^Host" ~/.ssh/config | grep -v "[?*]" | cut -d " " -f2- | tr ' ' '\n')" scp sftp ssh;
-
 # kubernetes stuff
 alias k='kubectl'
 
@@ -119,6 +116,76 @@ fi
 if command -v jj &> /dev/null; then
   eval "$(jj util completion bash)"
 fi
+
+# SSH host completion.
+#
+# Host names come from two places:
+#   - Host entries in ~/.ssh/config and anything it Includes (config.d/*.conf)
+#   - Tailscale peers, by their MagicDNS name
+#
+# known_hosts is deliberately not a source: config/ssh/config sets
+# HashKnownHosts yes, so every name in it is a one-way hash.
+#
+# This is a function rather than `complete -W "$(...)"` because the latter runs
+# at shell startup -- every new tmux pane would pay for it, and a host added
+# afterwards wouldn't complete until the next login. A function builds the list
+# on TAB instead.
+
+_ssh_hosts_from_config() {
+    local main="$HOME/.ssh/config"
+    [ -r "$main" ] || return 0
+
+    local files pattern expanded
+    files=("$main")
+
+    # Follow one level of Include. Patterns may be globs, may start with ~, and
+    # are otherwise relative to ~/.ssh.
+    while read -r _ pattern; do
+        case "$pattern" in
+            "~/"*) pattern="$HOME/${pattern#\~/}" ;;
+            /*)    ;;
+            *)     pattern="$HOME/.ssh/$pattern" ;;
+        esac
+        for expanded in $pattern; do
+            [ -r "$expanded" ] && files+=("$expanded")
+        done
+    done < <(grep -iE '^[[:space:]]*Include[[:space:]]+' "$main" 2>/dev/null)
+
+    # Drop patterns (*, ?) and negations (!): they aren't connectable names.
+    awk 'tolower($1) == "host" { for (i = 2; i <= NF; i++) print $i }' \
+        "${files[@]}" 2>/dev/null | grep -vE '[*?!]'
+}
+
+_ssh_hosts_from_tailscale() {
+    command -v tailscale &> /dev/null || return 0
+
+    # DNSName is authoritative; HostName can be junk (phones often report
+    # "localhost"). Strip the trailing dot and the MagicDNS suffix -- the
+    # tailnet is in the DNS search domain, so short names resolve on their own.
+    if command -v jq &> /dev/null; then
+        tailscale status --json 2>/dev/null \
+            | jq -r '(.Self, .Peer[]?) | .DNSName // empty' \
+            | sed 's/\.$//; s/\..*//'
+    else
+        tailscale status 2>/dev/null | awk '$1 ~ /^100\./ && NF > 1 { print $2 }'
+    fi
+}
+
+_ssh_host_complete() {
+    local cur="${COMP_WORDS[COMP_CWORD]}" prefix=""
+
+    # Keep a user@ prefix intact while completing only the host part.
+    case "$cur" in
+        *@*) prefix="${cur%@*}@"; cur="${cur#*@}" ;;
+    esac
+
+    COMPREPLY=($(compgen -P "$prefix" -W \
+        "$({ _ssh_hosts_from_config; _ssh_hosts_from_tailscale; } | sort -u)" \
+        -- "$cur"))
+}
+
+# -o default so scp and sftp still complete local paths when no host matches.
+complete -o default -F _ssh_host_complete ssh scp sftp
 
 # =============================================================================
 # Style / Prompt
