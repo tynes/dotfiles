@@ -154,6 +154,11 @@ echo "Setting up SSH client config..."
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
+# Machine-local host definitions live here; the tracked config Includes them.
+# Untracked, so host names and key paths stay out of git.
+mkdir -p ~/.ssh/config.d
+chmod 700 ~/.ssh/config.d
+
 # Backup existing ssh config if it's a real file (not already our symlink)
 [ -e ~/.ssh/config ] && [ ! -L ~/.ssh/config ] && mv ~/.ssh/config ~/.ssh/config.bak && echo "Backed up ~/.ssh/config to ~/.ssh/config.bak"
 [ -L ~/.ssh/config ] && rm ~/.ssh/config
