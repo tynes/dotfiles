@@ -69,10 +69,46 @@ if [ -d "$HOME/.local/bin" ]; then
     PATH="$PATH:$HOME/.local/bin"
 fi
 
-# ssh-agent (run once per login)
-if [ -z "$SSH_AUTH_SOCK" ]; then
-    eval "$(ssh-agent -s)"
+# ssh-agent: one shared agent per machine, at a fixed socket path.
+#
+# This used to be `[ -z "$SSH_AUTH_SOCK" ] && eval "$(ssh-agent -s)"`, which
+# spawned a brand new *empty* agent in every login shell. tmux starts each pane
+# as a login shell, and macOS only exports the Keychain agent's socket into the
+# GUI session (not into sshd sessions), so panes kept landing on fresh, keyless
+# agents. A fixed path means every shell and pane converges on the same agent
+# regardless of when it was created, and tmux's cached SSH_AUTH_SOCK can never
+# go stale.
+SSH_AGENT_SOCK="$HOME/.ssh/agent.sock"
+
+# ssh-add -l exit codes: 0 = agent has keys, 1 = agent up but empty, 2 = no agent.
+SSH_AUTH_SOCK="$SSH_AGENT_SOCK" ssh-add -l >/dev/null 2>&1
+ssh_agent_state=$?
+
+if [ "$ssh_agent_state" -eq 2 ]; then
+    # Nothing listening. Clear the socket a dead agent left behind, then start one.
+    rm -f "$SSH_AGENT_SOCK"
+    ssh-agent -a "$SSH_AGENT_SOCK" >/dev/null 2>&1 && ssh_agent_state=1
 fi
+
+if [ "$ssh_agent_state" -ne 2 ]; then
+    export SSH_AUTH_SOCK="$SSH_AGENT_SOCK"
+    # `ssh-agent -a` prints a pid, but no shell here should be able to kill the
+    # shared agent, and a stale pid in tmux's environment is worse than none.
+    unset SSH_AGENT_PID
+fi
+
+if [ "$ssh_agent_state" -eq 1 ]; then
+    # Agent is up but empty: load every private key that has a matching .pub.
+    # Only runs once per agent lifetime, so a passphrase is asked for at most
+    # once per boot rather than once per pane.
+    for ssh_pub in "$HOME"/.ssh/*.pub; do
+        ssh_key="${ssh_pub%.pub}"
+        [ -f "$ssh_key" ] && ssh-add "$ssh_key" >/dev/null 2>&1
+    done
+    unset ssh_pub ssh_key
+fi
+
+unset ssh_agent_state
 
 # Export PATH
 export PATH

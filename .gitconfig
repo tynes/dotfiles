@@ -22,9 +22,18 @@
 
 [commit]
 	gpgsign = true
-
-[url "git@github.com:"]
-	insteadOf = https://github.com/
-
 [init]
 	defaultBranch = main
+# Managed by `gh auth`. The empty `helper =` is not a typo: credential.helper is
+# a multi-valued list, and an empty value resets it -- here it discards the
+# system-level osxkeychain helper from /opt/homebrew/etc/gitconfig so that only
+# gh answers for GitHub. The PATH guard keeps the helper working when git runs
+# without the login shell's PATH, without hardcoding a macOS-only gh location.
+[credential "https://github.com"]
+	helper = 
+	helper = "!f() { command -v gh >/dev/null 2>&1 || PATH=\"/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$PATH\"; gh auth git-credential \"$@\"; }; f"
+[credential "https://gist.github.com"]
+	helper = 
+	helper = "!f() { command -v gh >/dev/null 2>&1 || PATH=\"/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$PATH\"; gh auth git-credential \"$@\"; }; f"
+[url "git@github.com:"]
+	insteadof = https://github.com/
