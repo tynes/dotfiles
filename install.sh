@@ -623,25 +623,11 @@ install_codex_linux() {
         info "codex already installed"
         return
     fi
-    info "Installing OpenAI Codex from GitHub releases..."
+    info "Installing OpenAI Codex..."
 
-    # Get the latest version tag from GitHub API using jq for reliable parsing
-    CODEX_VERSION=$(curl -s https://api.github.com/repos/openai/codex/releases/latest | jq -r '.tag_name')
+    curl -fsSL https://chatgpt.com/codex/install.sh | sh
 
-    if [ -z "$CODEX_VERSION" ] || [ "$CODEX_VERSION" = "null" ]; then
-        error "Failed to get latest codex version"
-        return 1
-    fi
-
-    info "Downloading codex $CODEX_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -fL "https://github.com/openai/codex/releases/download/${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz" -o /tmp/codex.tar.gz
-    tar -xzf /tmp/codex.tar.gz -C /tmp
-    mv /tmp/codex-x86_64-unknown-linux-musl ~/.local/bin/codex
-    chmod +x ~/.local/bin/codex
-    rm /tmp/codex.tar.gz
-
-    info "codex installed to ~/.local/bin/codex"
+    info "codex installed"
 }
 
 install_antigravity_cli_linux() {
