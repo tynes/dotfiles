@@ -76,12 +76,12 @@ install_packages() {
                 awscli \
                 claude-code \
                 codex \
-                gemini-cli \
                 nvimpager \
                 moor \
                 watch \
                 tailscale \
                 ghostty \
+                antigravity-cli \
                 gnupg \
                 orbstack \
                 openssh \
@@ -215,8 +215,8 @@ install_packages() {
             # codex - OpenAI Codex CLI
             install_codex_linux
 
-            # gemini-cli - Gemini CLI
-            install_gemini_cli_linux
+            # antigravity-cli - Google Antigravity CLI
+            install_antigravity_cli_linux
 
             # nvimpager - neovim-based pager
             install_nvimpager
@@ -644,27 +644,38 @@ install_codex_linux() {
     info "codex installed to ~/.local/bin/codex"
 }
 
-install_gemini_cli_linux() {
-    if command -v gemini &> /dev/null; then
-        info "Gemini CLI already installed"
+install_antigravity_cli_linux() {
+    if command -v antigravity &> /dev/null; then
+        info "Antigravity CLI already installed"
         return
     fi
-    info "Installing Gemini CLI..."
+    info "Installing Antigravity CLI..."
 
-    # Check if Node.js is available
-    if ! command -v npm &> /dev/null; then
-        error "Node.js/npm is required to install Gemini CLI but not found"
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) MANIFEST_ARCH="amd64" ;;
+        aarch64|arm64) MANIFEST_ARCH="arm64" ;;
+        *)
+            error "Unsupported architecture for Antigravity CLI: $ARCH"
+            return 1
+            ;;
+    esac
+
+    ANTIGRAVITY_URL=$(curl -s "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_${MANIFEST_ARCH}.json" | jq -r '.url')
+
+    if [ -z "$ANTIGRAVITY_URL" ] || [ "$ANTIGRAVITY_URL" = "null" ]; then
+        error "Failed to get latest Antigravity CLI download URL"
         return 1
     fi
 
-    # Configure npm to use ~/.local for global installs (binaries go to ~/.local/bin)
-    mkdir -p ~/.local
-    npm config set prefix ~/.local
+    mkdir -p ~/.local/bin
+    curl -fL "$ANTIGRAVITY_URL" -o /tmp/antigravity-cli.tar.gz
+    tar -xzf /tmp/antigravity-cli.tar.gz -C /tmp
+    mv /tmp/antigravity ~/.local/bin/antigravity
+    chmod +x ~/.local/bin/antigravity
+    rm -f /tmp/antigravity-cli.tar.gz
 
-    # Install Gemini CLI via npm
-    npm install -g @google/gemini-cli
-
-    info "Gemini CLI installed to ~/.local/bin"
+    info "Antigravity CLI installed to ~/.local/bin/antigravity"
 }
 
 install_nvimpager() {
@@ -1004,7 +1015,7 @@ install_pi() {
     # prompts on /dev/tty for an install/reinstall menu, so it can't run
     # unattended. Install the npm package directly with the same flags the
     # script uses under the hood, which is fully non-interactive on macOS/Linux.
-    # On Linux, target a user-writable global prefix (matches gemini-cli setup).
+    # On Linux, target a user-writable global prefix.
     if [[ "$OS" == "debian" ]]; then
         mkdir -p ~/.local
         npm config set prefix ~/.local
