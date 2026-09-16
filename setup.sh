@@ -189,6 +189,14 @@ eval $CMD
 
 echo "Bin directory setup complete!"
 
+# Git commit signing setup
+# Must run after the dotfile symlink loop (it reads ~/.gitconfig) and after the
+# bin symlink. Called by repo path rather than ~/bin/... so it doesn't depend on
+# PATH, which a fresh cloud-init shell won't have picked up yet.
+echo "Setting up git commit signing..."
+"$PWD/bin/git-signing-refresh"
+echo "Git commit signing setup complete!"
+
 # Rust tooling setup
 if command -v rustup &> /dev/null; then
   echo "Setting up Rust development tools..."

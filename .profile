@@ -21,6 +21,13 @@ if command -v nvim &> /dev/null; then
     export EDITOR=nvim
 fi
 
+# gpg needs to know which terminal to draw pinentry on. Without this, signing a
+# commit over ssh or inside tmux fails with "Inappropriate ioctl for device"
+# rather than prompting for the passphrase.
+if tty -s; then
+    export GPG_TTY=$(tty)
+fi
+
 # Java (Homebrew OpenJDK on macOS, Adoptium on Linux)
 if [ -d /opt/homebrew/opt/openjdk@21 ]; then
     export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
@@ -112,3 +119,10 @@ unset ssh_agent_state
 
 # Export PATH
 export PATH
+
+# .gitconfig signs every commit by default; this flips signing off in
+# ~/.gitconfig.local on machines that don't hold the secret key (and warns), then
+# back on once a key is imported. Runs here so the state re-derives every login.
+if [ -x "$HOME/bin/git-signing-refresh" ]; then
+    "$HOME/bin/git-signing-refresh"
+fi
