@@ -3,3 +3,7 @@
 # stores history of files changed
 .config
 .claude/
+
+# Debris from vendor install scripts that rewrite dotfiles in place
+*.bak
+*.bak.*

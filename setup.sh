@@ -9,13 +9,16 @@ fi
 echo "Creating sym links..."
 
 # Get all of the files and use `sed -e` to delete
-# lines that match the argument
+# lines that match the argument. The `.bak` rule keeps installer-generated
+# backups (e.g. the `.bashrc.bak.<epoch>` some vendor install scripts leave
+# behind) from being symlinked into $HOME -- they are debris, not dotfiles.
 FILES=`ls -a | grep "^\." \
   | sed \
       -e "1,2d" \
       -e "/\.git$/d" \
       -e "/\.gitmodules$/d" \
       -e "/\.gitignore$/d" \
+      -e "/\.bak\(\..*\)\?$/d" \
   | grep -v user
 `
 
