@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+#
+# Bring up a minimal ufw ruleset on a Debian/Ubuntu server, sized for
+# ssh + mosh. Idempotent: `ufw allow` skips rules it already has, so
+# re-running only reconciles.
+#
+# Rules are installed by default; the firewall is only switched on when
+# you pass --enable. That split is deliberate -- install.sh runs
+# unattended, and silently firewalling a machine you are logged into
+# over the network is how you lose a machine.
+#
+# Two things ufw does NOT cover, worth knowing before trusting it:
+#
+#   * Docker publishes ports by writing its own iptables chains, which
+#     are consulted before ufw's. A container started with `-p 8080:80`
+#     is reachable regardless of what is below. Bind such containers to
+#     127.0.0.1, or filter them in the DOCKER-USER chain.
+#
+#   * A cloud firewall (Hetzner, AWS security groups, ...) is a separate
+#     layer in front of the host. If mosh's SSH handshake succeeds but
+#     the session then hangs, that upstream layer is dropping the UDP
+#     range and needs the same rule (`hcloud firewall describe <id>`).
+#
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Keep in lockstep with $MOSH_PORTS in .bash/init.sh -- the client passes
+# --port with this range, so a mismatch means a session that authenticates
+# over ssh and then hangs forever waiting on UDP.
+MOSH_PORT_RANGE="60000:60010"
+
+# Tailscale's default listening port for direct peer connections. Without
+# it tailnet traffic still flows, but only via DERP relays -- slower, and
+# it puts a third party on the path.
+TAILSCALE_PORT="41641"
+
+usage() {
+    cat <<'EOF'
+usage: firewall-setup [--enable]
+
+  (no args)   Install/reconcile the rules and print the resulting status.
+              If ufw is currently inactive it stays inactive -- nothing
+              about the machine's reachability changes.
+
+  --enable    Also activate ufw (default deny incoming). Only do this
+              from a session you can afford to lose, with a second one
+              open as a lifeline.
+EOF
+}
+
+ENABLE=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --enable) ENABLE=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) error "unknown argument: $1"; usage; exit 1 ;;
+    esac
+done
+
+if [[ "$(uname)" != "Linux" ]]; then
+    warn "ufw is Linux-only; nothing to do on $(uname)."
+    exit 0
+fi
+
+if ! command -v ufw &> /dev/null; then
+    warn "ufw not installed (try: sudo apt install -y ufw); skipping."
+    exit 0
+fi
+
+# Allow ssh before anything else, so there is never a window in which the
+# policy is deny-by-default and port 22 has no rule yet.
+info "Allowing ssh on 22/tcp..."
+sudo ufw allow 22/tcp comment 'ssh'
+
+info "Allowing http on 80/tcp..."
+sudo ufw allow 80/tcp comment 'http'
+
+# One UDP port per concurrent mosh session. The stock range is
+# 60000-61000; 11 ports is plenty for one person and leaves 990 fewer
+# ports listening on a public IP.
+info "Allowing mosh on ${MOSH_PORT_RANGE}/udp..."
+sudo ufw allow "${MOSH_PORT_RANGE}/udp" comment 'mosh'
+
+info "Allowing tailscale on ${TAILSCALE_PORT}/udp..."
+sudo ufw allow "${TAILSCALE_PORT}/udp" comment 'tailscale direct'
+
+info "Setting default policies..."
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+if [[ $ENABLE -eq 1 ]]; then
+    # --force skips ufw's interactive "may disrupt existing ssh
+    # connections" prompt. Established connections survive regardless:
+    # ufw's INPUT chain accepts ESTABLISHED,RELATED before the policy.
+    info "Enabling ufw..."
+    sudo ufw --force enable
+else
+    warn "Rules installed but ufw left as-is; pass --enable to activate."
+fi
+
+echo
+sudo ufw status verbose

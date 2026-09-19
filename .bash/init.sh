@@ -185,7 +185,34 @@ _ssh_host_complete() {
 }
 
 # -o default so scp and sftp still complete local paths when no host matches.
-complete -o default -F _ssh_host_complete ssh scp sftp
+complete -o default -F _ssh_host_complete ssh scp sftp mosh moshx
+
+# =============================================================================
+# Mosh
+# =============================================================================
+
+# Not a variable mosh itself reads -- it keeps the client's --port in lockstep
+# with the `ufw allow 60000:60010/udp` rule in bin/firewall-setup. Mosh's stock
+# range is 60000-61000; one UDP port is used per concurrent session, so 11 is
+# plenty and leaves 990 fewer ports exposed on a public IP.
+export MOSH_PORTS="60000:60010"
+
+# Mosh prefixes window titles with "[mosh]"; the terminal already knows.
+export MOSH_TITLE_NOPREFIX=1
+
+# Mosh keeps no scrollback of its own, and a mosh-server that dies takes the
+# session with it -- so land inside tmux, where both problems are already
+# solved. `new-session -A` attaches to the named session if it exists and
+# creates it otherwise, which makes reconnecting after a drop the same command
+# as connecting.
+function moshx() {
+    if [ -z "$1" ]; then
+        echo "usage: moshx <host> [tmux-session]"
+        return 1
+    fi
+
+    mosh --port="$MOSH_PORTS" "$1" -- tmux new-session -A -s "${2:-main}"
+}
 
 # =============================================================================
 # Style / Prompt
