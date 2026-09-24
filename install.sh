@@ -97,7 +97,8 @@ install_packages() {
                 maven \
                 php \
                 fswatch \
-                superfile
+                superfile \
+                muse-code
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
@@ -275,6 +276,9 @@ install_packages() {
 
             # superfile - terminal file manager
             install_superfile_linux
+
+            # Muse Code - Meta's AI coding agent
+            install_muse_code_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -1023,6 +1027,38 @@ install_superfile_linux() {
     bash -c "$(curl -sLo- https://superfile.dev/install.sh)"
 
     info "superfile installed"
+}
+
+install_muse_code_linux() {
+    if command -v muse &> /dev/null; then
+        info "Muse Code already installed"
+        return
+    fi
+    info "Installing Muse Code..."
+
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) MUSE_ARCH="x86" ;;
+        aarch64|arm64) MUSE_ARCH="aarch64" ;;
+        *)
+            error "Unsupported architecture for Muse Code: $ARCH"
+            return 1
+            ;;
+    esac
+
+    MUSE_VERSION=$(curl -s "https://api.meta.ai/muse-code/channels/muse-stable" | jq -r '.version')
+
+    if [ -z "$MUSE_VERSION" ] || [ "$MUSE_VERSION" = "null" ]; then
+        error "Failed to get latest Muse Code version"
+        return 1
+    fi
+
+    info "Downloading Muse Code $MUSE_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -fL "https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=${MUSE_VERSION}&file=muse-${MUSE_ARCH}-linux" -o ~/.local/bin/muse
+    chmod +x ~/.local/bin/muse
+
+    info "Muse Code installed to ~/.local/bin/muse"
 }
 
 # Install Rust/Cargo if needed for some tools
