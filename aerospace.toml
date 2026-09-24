@@ -264,3 +264,11 @@ on-mode-changed = []
 [[on-window-detected]]
     if.app-id = 'ch.protonmail.desktop'
     run = 'move-node-to-workspace M' # mnemonics M - Mail
+
+[[on-window-detected]]
+    if.app-id = 'com.meta.endo'
+    run = 'move-node-to-workspace E' # mnemonics E - Endo/Muse
+
+[[on-window-detected]]
+    if.app-id = 'com.anysphere.sand'
+    run = 'move-node-to-workspace W' # mnemonics W - Grok Bot
