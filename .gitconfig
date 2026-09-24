@@ -26,6 +26,12 @@
 	gpgsign = true
 [init]
 	defaultBranch = main
+[alias]
+	co = checkout
+	br = branch
+	ci = commit
+	st = status -sb
+	sw = switch
 # Managed by `gh auth`. The empty `helper =` is not a typo: credential.helper is
 # a multi-valued list, and an empty value resets it -- here it discards the
 # system-level osxkeychain helper from /opt/homebrew/etc/gitconfig so that only
