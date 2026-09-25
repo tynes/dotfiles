@@ -79,6 +79,10 @@ export MOOR='--wrap --statusbar=bold'
 alias les='moor'
 # shorter diff
 alias dif='difft'
+# GNU timeout (Homebrew coreutils installs it as gtimeout on macOS)
+if [[ "$(uname)" == 'Darwin' ]]; then
+    alias timeout='gtimeout'
+fi
 
 # git
 alias g='git'
