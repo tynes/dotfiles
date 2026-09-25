@@ -98,7 +98,9 @@ install_packages() {
                 php \
                 fswatch \
                 superfile \
-                muse-code
+                muse-code \
+                flarectl \
+                cloudflare-wrangler
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
@@ -279,6 +281,12 @@ install_packages() {
 
             # Muse Code - Meta's AI coding agent
             install_muse_code_linux
+
+            # flarectl - Cloudflare CLI
+            install_flarectl_linux
+
+            # wrangler - Cloudflare Workers CLI
+            install_wrangler_linux
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -1059,6 +1067,65 @@ install_muse_code_linux() {
     chmod +x ~/.local/bin/muse
 
     info "Muse Code installed to ~/.local/bin/muse"
+}
+
+install_flarectl_linux() {
+    if command -v flarectl &> /dev/null; then
+        info "flarectl already installed"
+        return
+    fi
+    info "Installing flarectl from GitHub releases..."
+
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) FLARECTL_ARCH="amd64" ;;
+        aarch64|arm64) FLARECTL_ARCH="arm64" ;;
+        *)
+            error "Unsupported architecture for flarectl: $ARCH"
+            return 1
+            ;;
+    esac
+
+    # flarectl only ships with the v0.x releases of cloudflare-go; the "latest"
+    # release is a newer major version without it, so pick the highest v0 tag.
+    FLARECTL_VERSION=$(curl -s https://api.github.com/repos/cloudflare/cloudflare-go/git/matching-refs/tags/v0. | jq -r '.[].ref | sub("refs/tags/"; "")' | sort -V | tail -1)
+
+    if [ -z "$FLARECTL_VERSION" ]; then
+        error "Failed to get latest flarectl version"
+        return 1
+    fi
+
+    # Version in filename doesn't have 'v' prefix
+    FLARECTL_VERSION_NUM=${FLARECTL_VERSION#v}
+
+    info "Downloading flarectl $FLARECTL_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -fL "https://github.com/cloudflare/cloudflare-go/releases/download/${FLARECTL_VERSION}/flarectl_${FLARECTL_VERSION_NUM}_linux_${FLARECTL_ARCH}.tar.gz" -o /tmp/flarectl.tar.gz
+    tar -xzf /tmp/flarectl.tar.gz -C ~/.local/bin flarectl
+    chmod +x ~/.local/bin/flarectl
+    rm /tmp/flarectl.tar.gz
+
+    info "flarectl installed to ~/.local/bin/flarectl"
+}
+
+install_wrangler_linux() {
+    if command -v wrangler &> /dev/null; then
+        info "wrangler already installed"
+        return
+    fi
+    info "Installing wrangler..."
+
+    if ! command -v npm &> /dev/null; then
+        error "Node.js/npm is required to install wrangler but not found"
+        return 1
+    fi
+
+    # Target a user-writable global prefix (same as pi)
+    mkdir -p ~/.local
+    npm config set prefix ~/.local
+    npm install -g --allow-scripts=esbuild,workerd --no-fund --no-audit wrangler
+
+    info "wrangler installed to ~/.local/bin/wrangler"
 }
 
 # Install Rust/Cargo if needed for some tools
