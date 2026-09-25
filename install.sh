@@ -100,7 +100,8 @@ install_packages() {
                 superfile \
                 muse-code \
                 flarectl \
-                cloudflare-wrangler
+                cloudflare-wrangler \
+                coreutils
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
