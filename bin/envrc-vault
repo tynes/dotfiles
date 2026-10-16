@@ -51,10 +51,6 @@ find_bin() {
 
 BIN=$(find_bin)
 
-if [[ -n ${ENVRC_VAULT_YUBIKEY:-} && $BIN == *keepassxcr ]]; then
-  die "keepassxcr does not support YubiKey unlock yet; set ENVRC_VAULT_BIN=keepassxc-cli"
-fi
-
 # Credential flags shared by keepassxcr and keepassxc-cli.
 CRED_FLAGS=()
 [[ -n ${ENVRC_VAULT_KEY_FILE:-} ]] && CRED_FLAGS+=(--key-file "$ENVRC_VAULT_KEY_FILE")
@@ -178,12 +174,17 @@ cmd_init() {
   read_password
   [[ -n $PASSWORD ]] || die "empty password"
   # db-create reads the new password twice (prompt and confirmation) from stdin.
-  # keepassxc-cli only sets a password when asked to with --set-password.
+  # keepassxc-cli only sets a password when asked to with --set-password, and
+  # cannot add a YubiKey or key file; keepassxcr takes them right away.
   local create=(db-create)
-  [[ $BIN == *keepassxc-cli ]] && create+=(--set-password)
+  if [[ $BIN == *keepassxc-cli ]]; then
+    create+=(--set-password)
+  else
+    create+=("${CRED_FLAGS[@]}")
+  fi
   printf '%s\n%s\n' "$PASSWORD" "$PASSWORD" | "$BIN" "${create[@]}" "$DB" >/dev/null
   echo "created $DB"
-  if [[ -n ${ENVRC_VAULT_YUBIKEY:-}${ENVRC_VAULT_KEY_FILE:-} ]]; then
+  if [[ $BIN == *keepassxc-cli && -n ${ENVRC_VAULT_YUBIKEY:-}${ENVRC_VAULT_KEY_FILE:-} ]]; then
     echo "now add your YubiKey / key file to it (KeePassXC: Database > Database Security)"
   fi
 }
