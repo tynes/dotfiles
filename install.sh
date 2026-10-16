@@ -120,6 +120,9 @@ install_packages() {
 
             # pi - AI coding agent
             install_pi
+
+            # keepassxcr - KeePass CLI used by envrc-vault / `vault_export` in .envrc
+            install_keepassxcr
             ;;
         debian)
             info "Updating apt cache..."
@@ -288,6 +291,9 @@ install_packages() {
 
             # wrangler - Cloudflare Workers CLI
             install_wrangler_linux
+
+            # keepassxcr - KeePass CLI used by envrc-vault / `vault_export` in .envrc
+            install_keepassxcr
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -1130,6 +1136,21 @@ install_wrangler_linux() {
 }
 
 # Install Rust/Cargo if needed for some tools
+install_keepassxcr() {
+    if command -v keepassxcr &> /dev/null; then
+        info "keepassxcr already installed"
+        return
+    fi
+    if ! command -v cargo &> /dev/null; then
+        warn "cargo not found, skipping keepassxcr"
+        return
+    fi
+    info "Installing keepassxcr from source..."
+    # Fetch with the git CLI so the url.insteadof rewrite to ssh in .gitconfig
+    # uses the ssh agent.
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --locked --git https://github.com/tynes/keepassxcr keepassxcr
+}
+
 install_rust() {
     if ! command -v cargo &> /dev/null; then
         info "Installing Rust..."

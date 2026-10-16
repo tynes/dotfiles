@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#
+# envrc-vault: read and write secrets in one local KeePass database.
+#
+# Each secret is the password field of an entry, addressed by its path in the
+# database (e.g. "myapp/API_KEY"). `.envrc` files read them with
+# `vault_export` (config/direnv/lib/keepassxcr.sh) or `$(envrc-vault get ...)`,
+# so secrets are decrypted on demand and never written to disk.
+#
+# Usage:
+#   envrc-vault init           create the database
+#   envrc-vault get ENTRY      print ENTRY's password
+#   envrc-vault set ENTRY      store a value (prompted, or read from stdin)
+#   envrc-vault ls [GROUP]     list a group
+#
+# Configuration (environment variables):
+#   ENVRC_VAULT_DB          database path (default ~/.local/share/envrc-vault/envrc.kdbx)
+#   ENVRC_VAULT_BIN         CLI to use    (default: keepassxcr, else keepassxc-cli)
+#   ENVRC_VAULT_YUBIKEY     YubiKey challenge-response slot (1 or 2)
+#   ENVRC_VAULT_KEY_FILE    key file path
+#   ENVRC_VAULT_NO_PASSWORD set to 1 to skip the password (key file / YubiKey only)
+#   ENVRC_VAULT_PASSWORD_CMD
+#                           command that prints the master password, e.g.
+#                           'security find-generic-password -s envrc-vault -w'
+#                           (otherwise the password is prompted on /dev/tty)
+
+set -euo pipefail
+
+DB=${ENVRC_VAULT_DB:-$HOME/.local/share/envrc-vault/envrc.kdbx}
+
+die() { echo "envrc-vault: $*" >&2; exit 1; }
+
+find_bin() {
+  if [[ -n ${ENVRC_VAULT_BIN:-} ]]; then
+    command -v "$ENVRC_VAULT_BIN" >/dev/null || die "$ENVRC_VAULT_BIN not found"
+    echo "$ENVRC_VAULT_BIN"
+  elif command -v keepassxcr >/dev/null; then
+    echo keepassxcr
+  elif command -v keepassxc-cli >/dev/null; then
+    echo keepassxc-cli
+  else
+    die "neither keepassxcr nor keepassxc-cli is installed (cargo install --git https://github.com/tynes/keepassxcr)"
+  fi
+}
+
+BIN=$(find_bin)
+
+# Credential flags shared by keepassxcr and keepassxc-cli.
+CRED_FLAGS=()
+[[ -n ${ENVRC_VAULT_KEY_FILE:-} ]] && CRED_FLAGS+=(--key-file "$ENVRC_VAULT_KEY_FILE")
+[[ -n ${ENVRC_VAULT_YUBIKEY:-} ]] && CRED_FLAGS+=(--yubikey "$ENVRC_VAULT_YUBIKEY")
+[[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] && CRED_FLAGS+=(--no-password)
+
+# Read the master password once, so a multi-step command asks only once. It is
+# handed to the CLI on stdin (both CLIs read it from there when stdin is not a
+# terminal), never as an argument, so it does not show up in `ps`.
+PASSWORD=
+read_password() {
+  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] && return
+  if [[ -n ${ENVRC_VAULT_PASSWORD_CMD:-} ]]; then
+    PASSWORD=$(eval "$ENVRC_VAULT_PASSWORD_CMD") || die "ENVRC_VAULT_PASSWORD_CMD failed"
+  elif { : >/dev/tty; } 2>/dev/null; then
+    printf 'Password for %s: ' "$DB" >/dev/tty
+    IFS= read -rs PASSWORD </dev/tty
+    printf '\n' >/dev/tty
+  else
+    die "no terminal to prompt for the password; set ENVRC_VAULT_PASSWORD_CMD"
+  fi
+}
+
+# kp SUBCOMMAND [ARGS...]: run the CLI with credentials. The master password,
+# then any extra lines in $KP_INPUT, go to its stdin.
+KP_INPUT=
+kp() {
+  local sub=$1; shift
+  local input=
+  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] || input=$PASSWORD$'\n'
+  [[ -n $KP_INPUT ]] && input+=$KP_INPUT$'\n'
+  printf '%s' "$input" | "$BIN" "$sub" "${CRED_FLAGS[@]}" "$@"
+}
+
+need_db() { [[ -f $DB ]] || die "no database at $DB (run: envrc-vault init)"; }
+
+cmd_get() {
+  local entry=${1:?usage: envrc-vault get ENTRY}
+  need_db; read_password
+  case $BIN in
+    *keepassxc-cli) kp show --quiet --attributes Password "$DB" "$entry" ;;
+    *) kp show --show-password "$DB" "$entry" | sed -n 's/^Password: //p' ;;
+  esac
+}
+
+cmd_set() {
+  local entry=${1:?usage: envrc-vault set ENTRY}
+  local value
+  need_db
+  if [[ -t 0 ]]; then
+    printf 'Value for %s: ' "$entry" >/dev/tty
+    IFS= read -rs value </dev/tty
+    printf '\n' >/dev/tty
+  else
+    IFS= read -r value || [[ -n $value ]]
+  fi
+  read_password
+  # Create each parent group on first use; ignore "already exists".
+  local group='' part parts
+  IFS=/ read -ra parts <<<"${entry%/*}"
+  if [[ $entry == */* ]]; then
+    for part in "${parts[@]}"; do
+      group+=${group:+/}$part
+      kp mkdir "$DB" "$group" >/dev/null 2>&1 || true
+    done
+  fi
+  KP_INPUT=$value
+  if kp edit --password-prompt "$DB" "$entry" >/dev/null 2>&1; then
+    echo "updated $entry"
+  else
+    kp add --password-prompt "$DB" "$entry" >/dev/null
+    echo "added $entry"
+  fi
+}
+
+cmd_ls() {
+  need_db; read_password
+  kp ls "$DB" "$@"
+}
+
+cmd_init() {
+  [[ -e $DB ]] && die "$DB already exists"
+  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] && die "init needs a master password; add a YubiKey or key file afterwards"
+  mkdir -p "$(dirname "$DB")"
+  chmod 700 "$(dirname "$DB")"
+  read_password
+  [[ -n $PASSWORD ]] || die "empty password"
+  # db-create reads the new password twice (prompt and confirmation) from stdin.
+  # keepassxc-cli only sets a password when asked to with --set-password.
+  local create=(db-create)
+  [[ $BIN == *keepassxc-cli ]] && create+=(--set-password)
+  printf '%s\n%s\n' "$PASSWORD" "$PASSWORD" | "$BIN" "${create[@]}" "$DB" >/dev/null
+  echo "created $DB"
+  if [[ -n ${ENVRC_VAULT_YUBIKEY:-}${ENVRC_VAULT_KEY_FILE:-} ]]; then
+    echo "now add your YubiKey / key file to it (KeePassXC: Database > Database Security)"
+  fi
+}
+
+case ${1:-} in
+  get)  shift; cmd_get "$@" ;;
+  set)  shift; cmd_set "$@" ;;
+  ls)   shift; cmd_ls "$@" ;;
+  init) shift; cmd_init "$@" ;;
+  *) sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

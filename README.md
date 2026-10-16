@@ -92,6 +92,39 @@ Keep `$MOSH_PORTS` in `.bash/init.sh` and `MOSH_PORT_RANGE` in
 Mosh only does interactive shells. It has no port forwarding, no agent
 forwarding, no X11 forwarding, and no `scp`/`sftp`. Keep using `ssh` for those.
 
+## Secrets in `.envrc`
+
+Secrets live in one local KeePass database, opened with
+[keepassxcr](https://github.com/tynes/keepassxcr) (or `keepassxc-cli` as a
+fallback). A project's `.envrc` stays free of secrets and only names the entries
+to read; they are decrypted when direnv loads the directory and never written to
+disk. `vault_export` lives in `config/direnv/lib/keepassxcr.sh`, symlinked to
+`~/.config/direnv/lib/`, which direnv loads for every `.envrc`.
+
+```bash
+envrc-vault init                  # create ~/.local/share/envrc-vault/envrc.kdbx
+envrc-vault set myapp/API_KEY     # prompts for the value
+```
+
+```bash
+# .envrc
+vault_export API_KEY=myapp/API_KEY RPC_URL=myapp/RPC_URL
+# or, for a one-off:  export TOKEN=$(envrc-vault get myapp/TOKEN)
+```
+
+`vault_export` asks for the master password once per load, however many
+entries it reads. If keepassxcr, the database or an entry is missing, it warns
+and leaves that variable unset rather than breaking the environment.
+
+Unlock settings, all optional: `ENVRC_VAULT_YUBIKEY=2` (challenge-response slot),
+`ENVRC_VAULT_KEY_FILE`, `ENVRC_VAULT_NO_PASSWORD=1`, and
+`ENVRC_VAULT_PASSWORD_CMD` (a command that prints the master password, such as a
+macOS Keychain lookup). `ENVRC_VAULT_SKIP=1` skips decryption entirely.
+
+`config/git/ignore` (the global gitignore) keeps `.env`, `.env.local`,
+`.envrc.local` and `.direnv/` out of every repo. For machine-local overrides,
+end a committed `.envrc` with `source_env_if_exists .envrc.local`.
+
 ## Compatibility
 
 These dotfiles are tested and known to work on macOS (using `homebrew`)

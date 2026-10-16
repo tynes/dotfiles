@@ -150,6 +150,34 @@ eval $CMD
 
 echo "uv config setup complete!"
 
+# direnv setup: global helpers in ~/.config/direnv/lib (vault_export)
+echo "Setting up direnv config..."
+
+mkdir -p ~/.config
+
+[ -e ~/.config/direnv ] && [ ! -L ~/.config/direnv ] && rm -rf ~/.config/direnv.bak && mv ~/.config/direnv ~/.config/direnv.bak && echo "Backed up ~/.config/direnv to ~/.config/direnv.bak"
+[ -L ~/.config/direnv ] && rm ~/.config/direnv
+
+CMD="ln -sfn $PWD/config/direnv $HOME/.config/direnv"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "direnv setup complete!"
+
+# Global gitignore: git reads ~/.config/git/ignore without any gitconfig entry
+echo "Setting up global gitignore..."
+
+mkdir -p ~/.config/git
+
+[ -e ~/.config/git/ignore ] && [ ! -L ~/.config/git/ignore ] && mv ~/.config/git/ignore ~/.config/git/ignore.bak && echo "Backed up ~/.config/git/ignore to ~/.config/git/ignore.bak"
+[ -L ~/.config/git/ignore ] && rm ~/.config/git/ignore
+
+CMD="ln -sf $PWD/config/git/ignore $HOME/.config/git/ignore"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Global gitignore setup complete!"
+
 # SSH client config setup
 echo "Setting up SSH client config..."
 
