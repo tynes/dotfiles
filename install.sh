@@ -101,7 +101,9 @@ install_packages() {
                 muse-code \
                 flarectl \
                 cloudflare-wrangler \
-                coreutils
+                coreutils \
+                sops \
+                age
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
@@ -120,6 +122,9 @@ install_packages() {
 
             # pi - AI coding agent
             install_pi
+
+            # keepassxcr - KeePass CLI used by envrc-vault / `use keepassxcr`
+            install_keepassxcr
             ;;
         debian)
             info "Updating apt cache..."
@@ -155,7 +160,8 @@ install_packages() {
                 wget \
                 php \
                 php-cli \
-                php-common
+                php-common \
+                age
 
             # neovim - get latest from GitHub releases (apt version is often outdated)
             install_neovim_linux
@@ -288,6 +294,12 @@ install_packages() {
 
             # wrangler - Cloudflare Workers CLI
             install_wrangler_linux
+
+            # sops - encrypted secrets files (`use sops` in .envrc)
+            install_sops_linux
+
+            # keepassxcr - KeePass CLI used by envrc-vault / `use keepassxcr`
+            install_keepassxcr
             ;;
         *)
             error "Unsupported OS. Please install packages manually."
@@ -1130,6 +1142,43 @@ install_wrangler_linux() {
 }
 
 # Install Rust/Cargo if needed for some tools
+install_sops_linux() {
+    if command -v sops &> /dev/null; then
+        info "sops already installed"
+        return
+    fi
+    info "Installing sops from GitHub releases..."
+
+    SOPS_VERSION=$(curl -s https://api.github.com/repos/getsops/sops/releases/latest | jq -r '.tag_name')
+
+    if [ -z "$SOPS_VERSION" ] || [ "$SOPS_VERSION" = "null" ]; then
+        error "Failed to get latest sops version"
+        return 1
+    fi
+
+    info "Downloading sops $SOPS_VERSION..."
+    mkdir -p ~/.local/bin
+    curl -fL "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64" -o ~/.local/bin/sops
+    chmod +x ~/.local/bin/sops
+
+    info "sops installed to ~/.local/bin/sops"
+}
+
+install_keepassxcr() {
+    if command -v keepassxcr &> /dev/null; then
+        info "keepassxcr already installed"
+        return
+    fi
+    if ! command -v cargo &> /dev/null; then
+        warn "cargo not found, skipping keepassxcr"
+        return
+    fi
+    info "Installing keepassxcr from source..."
+    # Fetch with the git CLI so the url.insteadof rewrite to ssh in .gitconfig
+    # uses the ssh agent.
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --locked --git https://github.com/tynes/keepassxcr keepassxcr
+}
+
 install_rust() {
     if ! command -v cargo &> /dev/null; then
         info "Installing Rust..."

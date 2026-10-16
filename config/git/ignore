@@ -1,0 +1,12 @@
+# Global gitignore (git reads ~/.config/git/ignore by default).
+#
+# Machine-local and secret environment files. A committed .envrc holds only
+# non-secret defaults and `use keepassxcr` / `use sops`; anything private goes
+# in these, which never get committed by accident.
+.env
+.env.local
+.env.*.local
+.envrc.local
+
+# direnv's per-project cache (layout python, use nix, ...)
+.direnv/
