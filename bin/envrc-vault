@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
 #
-# envrc-vault: keep per-project .env secrets in one local KeePass database.
+# envrc-vault: read and write secrets in one local KeePass database.
 #
-# Each project's secrets live as a dotenv-format attachment (named ".env") on an
-# entry "<group>/<project>" in a single KDBX file. Nothing is written to disk in
-# plaintext: `push` reads an existing file, `export` prints to stdout, and the
-# direnv helper (config/direnv/lib/keepassxcr.sh) pipes that straight into
-# `direnv dotenv`.
+# Each secret is the password field of an entry, addressed by its path in the
+# database (e.g. "myapp/API_KEY"). `.envrc` files read them with
+# `vault_export` (config/direnv/lib/keepassxcr.sh) or `$(envrc-vault get ...)`,
+# so secrets are decrypted on demand and never written to disk.
 #
 # Usage:
-#   envrc-vault push [FILE] [ENTRY]   store FILE (default .env.local) in the vault
-#   envrc-vault export [ENTRY]        print the stored dotenv to stdout
-#   envrc-vault ls                    list stored projects
-#   envrc-vault init                  create the vault database
-#
-# ENTRY defaults to "$ENVRC_VAULT_GROUP/<basename of $PWD>".
+#   envrc-vault init           create the database
+#   envrc-vault get ENTRY      print ENTRY's password
+#   envrc-vault set ENTRY      store a value (prompted, or read from stdin)
+#   envrc-vault ls [GROUP]     list a group
 #
 # Configuration (environment variables):
-#   ENVRC_VAULT_DB          database path     (default ~/.local/share/envrc-vault/envrc.kdbx)
-#   ENVRC_VAULT_GROUP       group for entries (default direnv)
-#   ENVRC_VAULT_BIN         CLI to use        (default: keepassxcr, else keepassxc-cli)
+#   ENVRC_VAULT_DB          database path (default ~/.local/share/envrc-vault/envrc.kdbx)
+#   ENVRC_VAULT_BIN         CLI to use    (default: keepassxcr, else keepassxc-cli)
 #   ENVRC_VAULT_YUBIKEY     YubiKey challenge-response slot (1 or 2)
 #   ENVRC_VAULT_KEY_FILE    key file path
 #   ENVRC_VAULT_NO_PASSWORD set to 1 to skip the password (key file / YubiKey only)
@@ -31,8 +27,6 @@
 set -euo pipefail
 
 DB=${ENVRC_VAULT_DB:-$HOME/.local/share/envrc-vault/envrc.kdbx}
-GROUP=${ENVRC_VAULT_GROUP:-direnv}
-ATTACHMENT=.env
 
 die() { echo "envrc-vault: $*" >&2; exit 1; }
 
@@ -74,46 +68,61 @@ read_password() {
   fi
 }
 
-# kp SUBCOMMAND [ARGS...]: run the CLI with credentials, password on stdin.
+# kp SUBCOMMAND [ARGS...]: run the CLI with credentials. The master password,
+# then any extra lines in $KP_INPUT, go to its stdin.
+KP_INPUT=
 kp() {
   local sub=$1; shift
-  if [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]]; then
-    "$BIN" "$sub" "${CRED_FLAGS[@]}" "$@" </dev/null
-  else
-    printf '%s\n' "$PASSWORD" | "$BIN" "$sub" "${CRED_FLAGS[@]}" "$@"
-  fi
+  local input=
+  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] || input=$PASSWORD$'\n'
+  [[ -n $KP_INPUT ]] && input+=$KP_INPUT$'\n'
+  printf '%s' "$input" | "$BIN" "$sub" "${CRED_FLAGS[@]}" "$@"
 }
 
-default_entry() { echo "$GROUP/$(basename "$PWD")"; }
+need_db() { [[ -f $DB ]] || die "no database at $DB (run: envrc-vault init)"; }
 
-need_db() { [[ -f $DB ]] || die "no vault at $DB (run: envrc-vault init)"; }
-
-cmd_export() {
-  local entry=${1:-$(default_entry)}
+cmd_get() {
+  local entry=${1:?usage: envrc-vault get ENTRY}
   need_db; read_password
   case $BIN in
-    *keepassxc-cli) kp attachment-export --stdout "$DB" "$entry" "$ATTACHMENT" ;;
-    *) kp attachment-export "$DB" "$entry" "$ATTACHMENT" ;;
+    *keepassxc-cli) kp show --quiet --attributes Password "$DB" "$entry" ;;
+    *) kp show --show-password "$DB" "$entry" | sed -n 's/^Password: //p' ;;
   esac
 }
 
-cmd_push() {
-  local file=${1:-.env.local} entry=${2:-$(default_entry)}
-  [[ -f $file ]] || die "$file not found"
-  need_db; read_password
-  # Create the group and entry on first push; ignore "already exists".
-  kp mkdir "$DB" "${entry%/*}" >/dev/null 2>&1 || true
-  kp add "$DB" "$entry" >/dev/null 2>&1 || true
-  # Replace any previous version of the attachment.
-  kp attachment-rm "$DB" "$entry" "$ATTACHMENT" >/dev/null 2>&1 || true
-  kp attachment-import "$DB" "$entry" "$ATTACHMENT" "$file" >/dev/null
-  echo "stored $file in $DB as $entry"
-  echo "you can now delete the plaintext copy: rm $file"
+cmd_set() {
+  local entry=${1:?usage: envrc-vault set ENTRY}
+  local value
+  need_db
+  if [[ -t 0 ]]; then
+    printf 'Value for %s: ' "$entry" >/dev/tty
+    IFS= read -rs value </dev/tty
+    printf '\n' >/dev/tty
+  else
+    IFS= read -r value || [[ -n $value ]]
+  fi
+  read_password
+  # Create each parent group on first use; ignore "already exists".
+  local group='' part parts
+  IFS=/ read -ra parts <<<"${entry%/*}"
+  if [[ $entry == */* ]]; then
+    for part in "${parts[@]}"; do
+      group+=${group:+/}$part
+      kp mkdir "$DB" "$group" >/dev/null 2>&1 || true
+    done
+  fi
+  KP_INPUT=$value
+  if kp edit --password-prompt "$DB" "$entry" >/dev/null 2>&1; then
+    echo "updated $entry"
+  else
+    kp add --password-prompt "$DB" "$entry" >/dev/null
+    echo "added $entry"
+  fi
 }
 
 cmd_ls() {
   need_db; read_password
-  kp ls "$DB" "$GROUP"
+  kp ls "$DB" "$@"
 }
 
 cmd_init() {
@@ -128,9 +137,6 @@ cmd_init() {
   local create=(db-create)
   [[ $BIN == *keepassxc-cli ]] && create+=(--set-password)
   printf '%s\n%s\n' "$PASSWORD" "$PASSWORD" | "$BIN" "${create[@]}" "$DB" >/dev/null
-  # The database is password-only so far, so open it without the other factors.
-  CRED_FLAGS=()
-  kp mkdir "$DB" "$GROUP" >/dev/null
   echo "created $DB"
   if [[ -n ${ENVRC_VAULT_YUBIKEY:-}${ENVRC_VAULT_KEY_FILE:-} ]]; then
     echo "now add your YubiKey / key file to it (KeePassXC: Database > Database Security)"
@@ -138,9 +144,9 @@ cmd_init() {
 }
 
 case ${1:-} in
-  export) shift; cmd_export "$@" ;;
-  push)   shift; cmd_push "$@" ;;
-  ls)     shift; cmd_ls "$@" ;;
-  init)   shift; cmd_init "$@" ;;
+  get)  shift; cmd_get "$@" ;;
+  set)  shift; cmd_set "$@" ;;
+  ls)   shift; cmd_ls "$@" ;;
+  init) shift; cmd_init "$@" ;;
   *) sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

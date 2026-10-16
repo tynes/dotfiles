@@ -150,7 +150,7 @@ eval $CMD
 
 echo "uv config setup complete!"
 
-# direnv setup: global helpers in ~/.config/direnv/lib (use keepassxcr, use sops)
+# direnv setup: global helpers in ~/.config/direnv/lib (vault_export)
 echo "Setting up direnv config..."
 
 mkdir -p ~/.config
