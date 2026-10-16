@@ -9,6 +9,7 @@
 #
 # Usage:
 #   envrc-vault init           create the database
+#   envrc-vault unlock         keep the database unlocked (keepassxcr agent)
 #   envrc-vault get ENTRY      print ENTRY's password
 #   envrc-vault set ENTRY      store a value (prompted, or read from stdin)
 #   envrc-vault ls [GROUP]     list a group
@@ -23,6 +24,11 @@
 #                           command that prints the master password, e.g.
 #                           'security find-generic-password -s envrc-vault -w'
 #                           (otherwise the password is prompted on /dev/tty)
+#   ENVRC_VAULT_IDLE        keepassxcr unlock idle timeout, e.g. 15m (keepassxcr default)
+#   ENVRC_VAULT_MAX         keepassxcr unlock maximum lifetime, e.g. 8h
+#
+# With keepassxcr, `unlock` starts its background agent and every later command
+# uses it without asking for the password, until it locks.
 
 set -euo pipefail
 
@@ -45,18 +51,37 @@ find_bin() {
 
 BIN=$(find_bin)
 
+if [[ -n ${ENVRC_VAULT_YUBIKEY:-} && $BIN == *keepassxcr ]]; then
+  die "keepassxcr does not support YubiKey unlock yet; set ENVRC_VAULT_BIN=keepassxc-cli"
+fi
+
 # Credential flags shared by keepassxcr and keepassxc-cli.
 CRED_FLAGS=()
 [[ -n ${ENVRC_VAULT_KEY_FILE:-} ]] && CRED_FLAGS+=(--key-file "$ENVRC_VAULT_KEY_FILE")
 [[ -n ${ENVRC_VAULT_YUBIKEY:-} ]] && CRED_FLAGS+=(--yubikey "$ENVRC_VAULT_YUBIKEY")
 [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] && CRED_FLAGS+=(--no-password)
 
+# keepassxcr unlock agent state for $DB: unlocked, locked, or none (keepassxc-cli,
+# or a keepassxcr without the agent). While unlocked, keepassxcr takes credentials
+# from the agent and reads no master password from stdin, so none is sent.
+AGENT=
+agent_state() {
+  AGENT=none
+  [[ $BIN == *keepassxcr ]] || return 0
+  local rc=0
+  "$BIN" status "$DB" >/dev/null 2>&1 || rc=$?
+  case $rc in
+    0) AGENT=unlocked ;;
+    1) AGENT=locked ;;
+  esac
+}
+
 # Read the master password once, so a multi-step command asks only once. It is
 # handed to the CLI on stdin (both CLIs read it from there when stdin is not a
 # terminal), never as an argument, so it does not show up in `ps`.
 PASSWORD=
 read_password() {
-  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] && return
+  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 || $AGENT == unlocked ]] && return
   if [[ -n ${ENVRC_VAULT_PASSWORD_CMD:-} ]]; then
     PASSWORD=$(eval "$ENVRC_VAULT_PASSWORD_CMD") || die "ENVRC_VAULT_PASSWORD_CMD failed"
   elif { : >/dev/tty; } 2>/dev/null; then
@@ -73,21 +98,41 @@ read_password() {
 KP_INPUT=
 kp() {
   local sub=$1; shift
-  local input=
-  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] || input=$PASSWORD$'\n'
+  local input='' flags=()
+  # While unlocked, the agent holds the credentials.
+  if [[ $AGENT != unlocked ]]; then
+    flags=("${CRED_FLAGS[@]}")
+    # An expired agent would make keepassxcr refuse before reading stdin.
+    [[ $AGENT == locked ]] && flags+=(--no-agent)
+    [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] || input=$PASSWORD$'\n'
+  fi
   [[ -n $KP_INPUT ]] && input+=$KP_INPUT$'\n'
-  printf '%s' "$input" | "$BIN" "$sub" "${CRED_FLAGS[@]}" "$@"
+  printf '%s' "$input" | "$BIN" "$sub" "${flags[@]}" "$@"
 }
 
-need_db() { [[ -f $DB ]] || die "no database at $DB (run: envrc-vault init)"; }
+need_db() {
+  [[ -f $DB ]] || die "no database at $DB (run: envrc-vault init)"
+  agent_state
+}
+
+# Exit 0 once the database is unlocked, 2 when the CLI has no unlock agent.
+cmd_unlock() {
+  need_db
+  [[ $AGENT == none ]] && { echo "envrc-vault: $BIN has no unlock agent" >&2; exit 2; }
+  [[ $AGENT == unlocked ]] && return
+  read_password
+  local flags=("${CRED_FLAGS[@]}")
+  [[ -n ${ENVRC_VAULT_IDLE:-} ]] && flags+=(--idle "$ENVRC_VAULT_IDLE")
+  [[ -n ${ENVRC_VAULT_MAX:-} ]] && flags+=(--max "$ENVRC_VAULT_MAX")
+  local input=
+  [[ ${ENVRC_VAULT_NO_PASSWORD:-} == 1 ]] || input=$PASSWORD$'\n'
+  printf '%s' "$input" | "$BIN" unlock "${flags[@]}" "$DB"
+}
 
 cmd_get() {
   local entry=${1:?usage: envrc-vault get ENTRY}
   need_db; read_password
-  case $BIN in
-    *keepassxc-cli) kp show --quiet --attributes Password "$DB" "$entry" ;;
-    *) kp show --show-password "$DB" "$entry" | sed -n 's/^Password: //p' ;;
-  esac
+  kp show --quiet --attributes Password "$DB" "$entry"
 }
 
 cmd_set() {
@@ -148,5 +193,6 @@ case ${1:-} in
   set)  shift; cmd_set "$@" ;;
   ls)   shift; cmd_ls "$@" ;;
   init) shift; cmd_init "$@" ;;
+  unlock) shift; cmd_unlock "$@" ;;
   *) sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

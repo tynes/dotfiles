@@ -112,14 +112,19 @@ vault_export API_KEY=myapp/API_KEY RPC_URL=myapp/RPC_URL
 # or, for a one-off:  export TOKEN=$(envrc-vault get myapp/TOKEN)
 ```
 
-`vault_export` asks for the master password once per load, however many
-entries it reads. If keepassxcr, the database or an entry is missing, it warns
-and leaves that variable unset rather than breaking the environment.
+With keepassxcr, `vault_export` unlocks the database once (`envrc-vault unlock`,
+which starts keepassxcr's background agent) and later loads reuse it until it
+locks after 15 minutes idle or 8 hours (`ENVRC_VAULT_IDLE`, `ENVRC_VAULT_MAX`).
+With keepassxc-cli it asks for the master password once per load. If the tool,
+the database or an entry is missing, or the database is locked and there is no
+terminal to ask on, it warns and leaves that variable unset rather than
+breaking the environment.
 
-Unlock settings, all optional: `ENVRC_VAULT_YUBIKEY=2` (challenge-response slot),
-`ENVRC_VAULT_KEY_FILE`, `ENVRC_VAULT_NO_PASSWORD=1`, and
-`ENVRC_VAULT_PASSWORD_CMD` (a command that prints the master password, such as a
-macOS Keychain lookup). `ENVRC_VAULT_SKIP=1` skips decryption entirely.
+Unlock settings, all optional: `ENVRC_VAULT_YUBIKEY=2` (challenge-response slot,
+keepassxc-cli only for now), `ENVRC_VAULT_KEY_FILE`, `ENVRC_VAULT_NO_PASSWORD=1`,
+and `ENVRC_VAULT_PASSWORD_CMD` (a command that prints the master password, such
+as a macOS Keychain lookup; set it in your shell profile, not in a project's
+`.envrc`). `ENVRC_VAULT_SKIP=1` skips decryption entirely.
 
 `config/git/ignore` (the global gitignore) keeps `.env`, `.env.local`,
 `.envrc.local` and `.direnv/` out of every repo. For machine-local overrides,

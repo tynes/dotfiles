@@ -13,9 +13,11 @@
 #
 # Store a value with:  envrc-vault set myapp/API_KEY
 #
-# The master password is asked once per load, however many secrets the .envrc
-# reads. A missing tool, database or entry logs a warning and leaves that
-# variable unset instead of failing, so a committed .envrc still works on
+# With keepassxcr the database is unlocked once and stays unlocked for later
+# loads until its agent times out; with keepassxc-cli the master password is
+# asked once per load, however many secrets the .envrc reads. A missing tool,
+# database or entry, or a locked database with no terminal, logs a warning and
+# leaves that variable unset instead of failing, so a committed .envrc still works on
 # machines without keepassxcr. Set ENVRC_VAULT_SKIP=1 to skip (e.g. in CI).
 vault_export() {
   local db=${ENVRC_VAULT_DB:-$HOME/.local/share/envrc-vault/envrc.kdbx}
@@ -43,18 +45,32 @@ vault_export() {
   # Re-run when the database changes, e.g. after `envrc-vault set`.
   watch_file "$db"
 
-  # Ask for the master password here, once, and hand it to each lookup on
-  # stdin. A password command or a password-less database is left to
-  # envrc-vault itself.
-  if [[ -z ${ENVRC_VAULT_PASSWORD_CMD:-} && ${ENVRC_VAULT_NO_PASSWORD:-} != 1 ]]; then
-    if ! { : >/dev/tty; } 2>/dev/null; then
-      log_error "vault: no terminal to ask for the password; set ENVRC_VAULT_PASSWORD_CMD"
+  # With keepassxcr, unlock its agent: the password is asked (or taken from
+  # ENVRC_VAULT_PASSWORD_CMD) only while locked, and later loads reuse the
+  # agent until it times out. Exit 2 means no agent (keepassxc-cli).
+  local rc=0
+  "$vault" unlock >&2 || rc=$?
+  case $rc in
+    0) ;;
+    2)
+      # Ask for the master password here, once, and hand it to each lookup on
+      # stdin. A password command or a password-less database is left to
+      # envrc-vault itself.
+      if [[ -z ${ENVRC_VAULT_PASSWORD_CMD:-} && ${ENVRC_VAULT_NO_PASSWORD:-} != 1 ]]; then
+        if ! { : >/dev/tty; } 2>/dev/null; then
+          log_error "vault: no terminal to ask for the password; set ENVRC_VAULT_PASSWORD_CMD"
+          return 0
+        fi
+        printf 'direnv: password for %s: ' "$db" >/dev/tty
+        IFS= read -rs pw </dev/tty
+        printf '\n' >/dev/tty
+      fi
+      ;;
+    *)
+      log_error "vault: could not unlock $db; run 'envrc-vault unlock' then 'direnv reload'"
       return 0
-    fi
-    printf 'direnv: password for %s: ' "$db" >/dev/tty
-    IFS= read -rs pw </dev/tty
-    printf '\n' >/dev/tty
-  fi
+      ;;
+  esac
 
   for pair in "$@"; do
     var=${pair%%=*}
