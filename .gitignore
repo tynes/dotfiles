@@ -7,3 +7,6 @@
 # Debris from vendor install scripts that rewrite dotfiles in place
 *.bak
 *.bak.*
+
+# Python wheels (e.g. from pip download) never belong here
+*.whl
