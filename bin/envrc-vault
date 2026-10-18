@@ -45,7 +45,7 @@ find_bin() {
   elif command -v keepassxc-cli >/dev/null; then
     echo keepassxc-cli
   else
-    die "neither keepassxcr nor keepassxc-cli is installed (cargo install --git https://github.com/tynes/keepassxcr)"
+    die "neither keepassxcr nor keepassxc-cli is installed (cargo install --locked keepassxcr)"
   fi
 }
 

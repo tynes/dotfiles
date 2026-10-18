@@ -1135,20 +1135,21 @@ install_wrangler_linux() {
     info "wrangler installed to ~/.local/bin/wrangler"
 }
 
-# Install Rust/Cargo if needed for some tools
+# keepassxcr - latest release from crates.io. cargo skips the build when that
+# version is already installed and upgrades an older one.
 install_keepassxcr() {
-    if command -v keepassxcr &> /dev/null; then
-        info "keepassxcr already installed"
-        return
-    fi
     if ! command -v cargo &> /dev/null; then
         warn "cargo not found, skipping keepassxcr"
         return
     fi
-    info "Installing keepassxcr from source..."
-    # Fetch with the git CLI so the url.insteadof rewrite to ssh in .gitconfig
-    # uses the ssh agent.
-    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --locked --git https://github.com/tynes/keepassxcr keepassxcr
+    local args=(--locked keepassxcr)
+    # An install from the git repo or a local checkout blocks a crates.io install
+    # unless it is replaced with --force.
+    if cargo install --list | grep -q '^keepassxcr .* ('; then
+        args=(--force "${args[@]}")
+    fi
+    info "Installing the latest keepassxcr release..."
+    cargo install "${args[@]}"
 }
 
 install_rust() {
