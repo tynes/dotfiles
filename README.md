@@ -121,7 +121,8 @@ terminal to ask on, it warns and leaves that variable unset rather than
 breaking the environment.
 
 Unlock settings, all optional: `ENVRC_VAULT_YUBIKEY=2` (challenge-response slot,
-keepassxc-cli only for now), `ENVRC_VAULT_KEY_FILE`, `ENVRC_VAULT_NO_PASSWORD=1`,
+or `2:SERIAL`; with keepassxcr, `envrc-vault unlock` needs one touch and later
+loads none until the database is saved), `ENVRC_VAULT_KEY_FILE`, `ENVRC_VAULT_NO_PASSWORD=1`,
 and `ENVRC_VAULT_PASSWORD_CMD` (a command that prints the master password, such
 as a macOS Keychain lookup; set it in your shell profile, not in a project's
 `.envrc`). `ENVRC_VAULT_SKIP=1` skips decryption entirely.
