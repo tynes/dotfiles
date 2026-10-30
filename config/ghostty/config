@@ -3,8 +3,12 @@ shell-integration-features = ssh-terminfo
 # Use native macOS tabs so AeroSpace doesn't treat each tab as a separate tiled window
 macos-titlebar-style = tabs
 
-# Allow clipboard access for OSC 52 (copy/paste over SSH)
-clipboard-read = allow
+# OSC 52 clipboard access.
+# Reading asks first: with `allow`, anything printed to the terminal (a file you
+# cat, a log line, output from a remote host) could read the clipboard without
+# you knowing, and it often holds passwords and wallet addresses.
+# Writing stays allowed so yanking over ssh/tmux doesn't prompt every time.
+clipboard-read = ask
 clipboard-write = allow
 
 unfocused-split-opacity = 0.55

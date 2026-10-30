@@ -3,6 +3,27 @@
 -- NOTE: We highly recommend setting up the Lua Language Server (`:LspInstall lua_ls`)
 --       as this provides autocomplete and documentation while editing
 
+local function osc52_copy_only()
+  if not vim.env.SSH_TTY then return nil end
+  local osc52 = require "vim.ui.clipboard.osc52"
+  local last = {}
+  local function copy(reg)
+    local send = osc52.copy(reg)
+    return function(lines, regtype)
+      last[reg] = { lines, regtype }
+      send(lines, regtype)
+    end
+  end
+  local function paste(reg)
+    return function() return last[reg] or { { "" }, "v" } end
+  end
+  return {
+    name = "OSC 52 (copy only)",
+    copy = { ["+"] = copy "+", ["*"] = copy "*" },
+    paste = { ["+"] = paste "+", ["*"] = paste "*" },
+  }
+end
+
 ---@type LazySpec
 return {
   "AstroNvim/astrocore",
@@ -49,18 +70,11 @@ return {
         -- NOTE: `mapleader` and `maplocalleader` must be set in the AstroNvim opts or before `lazy.setup`
         -- This can be found in the `lua/lazy_setup.lua` file
 
-        -- OSC 52 clipboard for SSH/tmux compatibility
-        clipboard = {
-          name = "OSC 52",
-          copy = {
-            ["+"] = require("vim.ui.clipboard.osc52").copy("+"),
-            ["*"] = require("vim.ui.clipboard.osc52").copy("*"),
-          },
-          paste = {
-            ["+"] = require("vim.ui.clipboard.osc52").paste("+"),
-            ["*"] = require("vim.ui.clipboard.osc52").paste("*"),
-          },
-        },
+        -- Over ssh, copy with OSC 52 but paste what was last copied in this
+        -- Neovim, so `p` never asks the terminal to read the clipboard (Ghostty
+        -- prompts for that). Paste from the system clipboard with the terminal's
+        -- paste key instead. Locally, Neovim picks pbcopy/pbpaste by itself.
+        clipboard = osc52_copy_only(),
       },
     },
     -- Mappings can be configured through AstroCore as well.
