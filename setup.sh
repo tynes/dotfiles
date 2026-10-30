@@ -58,8 +58,8 @@ if [[ "$(uname)" == 'Darwin' ]]; then
   echo "AeroSpace setup complete!"
 fi
 
-# AstroNvim v5 setup
-echo "Setting up AstroNvim v5..."
+# Neovim setup (vim.pack; plugins pinned in nvim-config/nvim-pack-lock.json)
+echo "Setting up Neovim..."
 
 # Backup existing nvim directories
 [ -e ~/.config/nvim ] && rm -rf ~/.config/nvim.bak && mv ~/.config/nvim ~/.config/nvim.bak && echo "Backed up ~/.config/nvim to ~/.config/nvim.bak"
@@ -67,13 +67,13 @@ echo "Setting up AstroNvim v5..."
 [ -e ~/.local/state/nvim ] && mv ~/.local/state/nvim ~/.local/state/nvim.bak && echo "Backed up ~/.local/state/nvim to ~/.local/state/nvim.bak"
 [ -e ~/.cache/nvim ] && mv ~/.cache/nvim ~/.cache/nvim.bak && echo "Backed up ~/.cache/nvim to ~/.cache/nvim.bak"
 
-# Create symlink to AstroNvim v5 config
+# Create symlink to the Neovim config
 CMD="ln -sfn $PWD/nvim-config $HOME/.config/nvim"
 echo "RUNNING: $CMD"
 eval $CMD
 
-echo "AstroNvim v5 setup complete!"
-echo "Run 'nvim' to start Neovim and install plugins."
+echo "Neovim setup complete!"
+echo "Run 'nvim' to install plugins, then :Trust in projects where language servers may run."
 
 # Ghostty terminal setup
 echo "Setting up Ghostty terminal config..."

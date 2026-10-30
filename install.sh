@@ -101,10 +101,18 @@ install_packages() {
                 muse-code \
                 flarectl \
                 cloudflare-wrangler \
-                coreutils
+                coreutils \
+                tree-sitter-cli \
+                lua-language-server \
+                pyright \
+                ruff \
+                typescript-language-server
 
             # Ensure 'python' command points to python3
             install_python_symlink_macos
+
+            # Language servers Homebrew doesn't package (Neovim LSP)
+            install_npm_language_servers
 
             # Foundry - Ethereum development toolkit
             install_foundry
@@ -291,6 +299,9 @@ install_packages() {
 
             # wrangler - Cloudflare Workers CLI
             install_wrangler_linux
+
+            # Neovim: language servers and the tree-sitter CLI
+            install_nvim_tools_linux
 
             # keepassxcr - KeePass CLI used by envrc-vault / `vault_export` in .envrc
             install_keepassxcr
@@ -1186,6 +1197,95 @@ install_keepassxcr() {
     cargo install "${args[@]}"
 }
 
+# Language servers for Neovim (nvim-config/lsp/). Installed here rather than
+# by a Neovim plugin (Mason), so the same release cooldowns apply: 7 days via
+# .npmrc and uv.toml.
+install_npm_language_servers() {
+    if ! command -v npm &> /dev/null; then
+        warn "npm not found, skipping npm language servers"
+        return
+    fi
+    local prefix=()
+    if [[ "$OS" == "debian" ]]; then
+        mkdir -p ~/.local
+        prefix=(--prefix "$HOME/.local")
+    fi
+    local pkgs=()
+    command -v nomicfoundation-solidity-language-server &> /dev/null || pkgs+=(@nomicfoundation/solidity-language-server)
+    if [[ "$OS" == "debian" ]]; then
+        command -v pyright-langserver &> /dev/null || pkgs+=(pyright)
+        command -v typescript-language-server &> /dev/null || pkgs+=(typescript-language-server typescript)
+    fi
+    if [ ${#pkgs[@]} -eq 0 ]; then
+        info "npm language servers already installed"
+        return
+    fi
+    info "Installing ${pkgs[*]} via npm..."
+    npm install -g "${prefix[@]}" --no-fund --no-audit "${pkgs[@]}"
+}
+
+install_nvim_tools_linux() {
+    install_npm_language_servers
+
+    if ! command -v ruff &> /dev/null; then
+        if command -v uv &> /dev/null; then
+            info "Installing ruff via uv..."
+            uv tool install ruff
+        else
+            warn "uv not found, skipping ruff"
+        fi
+    fi
+
+    # nvim-treesitter needs the tree-sitter CLI to build parsers, and says to
+    # get it from a package manager, not npm.
+    if ! command -v tree-sitter &> /dev/null; then
+        if command -v cargo &> /dev/null; then
+            info "Installing tree-sitter CLI via cargo..."
+            cargo install --locked tree-sitter-cli
+        else
+            warn "cargo not found, skipping tree-sitter CLI"
+        fi
+    fi
+
+    install_lua_language_server_linux
+}
+
+install_lua_language_server_linux() {
+    if command -v lua-language-server &> /dev/null; then
+        info "lua-language-server already installed"
+        return
+    fi
+
+    local arch
+    case "$(uname -m)" in
+        x86_64) arch="x64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *) error "Unsupported architecture for lua-language-server: $(uname -m)"; return 1 ;;
+    esac
+
+    # Newest release at least 7 days old, matching the npm/uv cooldowns.
+    local cutoff version
+    cutoff=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+    version=$(curl -fsSL https://api.github.com/repos/LuaLS/lua-language-server/releases \
+        | jq -r --arg cutoff "$cutoff" \
+            '[.[] | select((.prerelease | not) and .published_at < $cutoff)][0].tag_name')
+    if [ -z "$version" ] || [ "$version" = "null" ]; then
+        error "Failed to find a lua-language-server release"
+        return 1
+    fi
+
+    info "Installing lua-language-server $version..."
+    local dir="$HOME/.local/share/lua-language-server"
+    rm -rf "$dir"
+    mkdir -p "$dir" ~/.local/bin
+    curl -fL "https://github.com/LuaLS/lua-language-server/releases/download/${version}/lua-language-server-${version}-linux-${arch}.tar.gz" \
+        | tar -xz -C "$dir"
+    # The binary finds its scripts relative to its own directory, so call it
+    # through a wrapper rather than a symlink.
+    printf '#!/bin/sh\nexec "%s/bin/lua-language-server" "$@"\n' "$dir" > ~/.local/bin/lua-language-server
+    chmod +x ~/.local/bin/lua-language-server
+}
+
 install_rust() {
     if ! command -v cargo &> /dev/null; then
         info "Installing Rust..."
@@ -1211,12 +1311,11 @@ init_neovim_plugins() {
 
     info "Initializing Neovim plugins..."
 
-    # Install plugins at the commits pinned in nvim-config/lazy-lock.json.
-    # `restore` checks out the lockfile; `sync` would update every plugin to
-    # its newest commit and ignore the lockfile.
-    nvim --headless +qa 2>/dev/null || true
-    sleep 2
-    nvim --headless "+Lazy! restore" +qa 2>/dev/null || true
+    # The first start installs plugins at the revisions pinned in
+    # nvim-config/nvim-pack-lock.json (vim.pack). Then build the treesitter
+    # parsers listed in nvim-config/lua/config/treesitter.lua.
+    nvim --headless +qa || true
+    nvim --headless "+lua require('config.treesitter').install(true)" +qa || true
 
     info "Neovim plugins initialized"
 }
