@@ -1053,14 +1053,15 @@ install_pi() {
 
     # The official pi.dev install script (curl https://pi.dev/install.sh | sh)
     # prompts on /dev/tty for an install/reinstall menu, so it can't run
-    # unattended. Install the npm package directly with the same flags the
-    # script uses under the hood, which is fully non-interactive on macOS/Linux.
+    # unattended. Install the npm package directly instead. The 7-day
+    # min-release-age from .npmrc applies, like every other npm install.
     # On Linux, target a user-writable global prefix.
+    local prefix=()
     if [[ "$OS" == "debian" ]]; then
         mkdir -p ~/.local
-        npm config set prefix ~/.local
+        prefix=(--prefix "$HOME/.local")
     fi
-    npm install -g --ignore-scripts --min-release-age=0 --no-fund --no-audit @earendil-works/pi-coding-agent
+    npm install -g "${prefix[@]}" --ignore-scripts --no-fund --no-audit @earendil-works/pi-coding-agent
 
     info "pi installed"
 }
@@ -1163,8 +1164,7 @@ install_wrangler_linux() {
 
     # Target a user-writable global prefix (same as pi)
     mkdir -p ~/.local
-    npm config set prefix ~/.local
-    npm install -g --allow-scripts=esbuild,workerd --no-fund --no-audit wrangler
+    npm install -g --prefix "$HOME/.local" --allow-scripts=esbuild,workerd --no-fund --no-audit wrangler
 
     info "wrangler installed to ~/.local/bin/wrangler"
 }
