@@ -1177,11 +1177,12 @@ init_neovim_plugins() {
 
     info "Initializing Neovim plugins..."
 
-    # Neovim plugin installation happens automatically on first launch
-    # We'll do a headless sync to pre-install plugins
+    # Install plugins at the commits pinned in nvim-config/lazy-lock.json.
+    # `restore` checks out the lockfile; `sync` would update every plugin to
+    # its newest commit and ignore the lockfile.
     nvim --headless +qa 2>/dev/null || true
     sleep 2
-    nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+    nvim --headless "+Lazy! restore" +qa 2>/dev/null || true
 
     info "Neovim plugins initialized"
 }
