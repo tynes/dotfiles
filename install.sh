@@ -733,20 +733,54 @@ install_tailscale_linux() {
     info "Tailscale installed"
 }
 
+# debian.griffo.io is a third-party repo. Its key is scoped to that repo with
+# signed-by, so it can't sign packages for any other apt source. A key in
+# /etc/apt/trusted.gpg.d is trusted for every repo on the machine.
+GRIFFO_KEY_FPR="EA0F721D231FDD3A0A17B9AC7808B4DD62C41256"
+GRIFFO_KEYRING="/etc/apt/keyrings/debian.griffo.io.gpg"
+GRIFFO_OLD_KEYRING="/etc/apt/trusted.gpg.d/debian.griffo.io.gpg"
+
+configure_griffo_apt_repo() {
+    local tmp
+    tmp=$(mktemp)
+
+    curl -fsSL "https://debian.griffo.io/${GRIFFO_KEY_FPR}.asc" | gpg --dearmor > "$tmp"
+
+    # Trust the download only if it holds exactly one primary key and that key
+    # has the expected fingerprint.
+    local fprs
+    fprs=$(gpg --show-keys --with-colons "$tmp" 2>/dev/null \
+        | awk -F: '$1 == "pub" { want = 1 } $1 == "fpr" && want { print $10; want = 0 }')
+    if [ "$fprs" != "$GRIFFO_KEY_FPR" ]; then
+        error "debian.griffo.io key fingerprint mismatch (got: ${fprs:-none})"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    sudo install -d -m 0755 /etc/apt/keyrings
+    sudo install -m 0644 "$tmp" "$GRIFFO_KEYRING"
+    rm -f "$tmp"
+    sudo rm -f "$GRIFFO_OLD_KEYRING"
+
+    # bookworm is the suite debian.griffo.io publishes
+    echo "deb [signed-by=${GRIFFO_KEYRING}] https://debian.griffo.io/apt bookworm main" \
+        | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
+}
+
 install_ghostty_linux() {
     if command -v ghostty &> /dev/null; then
         info "ghostty already installed"
+        # Machines set up by an older install.sh have the key trusted globally.
+        if [ -e "$GRIFFO_OLD_KEYRING" ]; then
+            info "Scoping the debian.griffo.io apt key to its own repo..."
+            configure_griffo_apt_repo
+        fi
         return
     fi
     info "Installing Ghostty from debian.griffo.io..."
 
-    # Add the repository GPG key
-    curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
+    configure_griffo_apt_repo || return 1
 
-    # Add the repository (use bookworm which is available on debian.griffo.io)
-    echo "deb https://debian.griffo.io/apt bookworm main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
-
-    # Update and install
     sudo apt update
     sudo apt install -y ghostty
 
