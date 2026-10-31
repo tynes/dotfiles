@@ -131,6 +131,16 @@ as a macOS Keychain lookup; set it in your shell profile, not in a project's
 `.envrc.local` and `.direnv/` out of every repo. For machine-local overrides,
 end a committed `.envrc` with `source_env_if_exists .envrc.local`.
 
+## Rex
+
+`config/rex/init.lua` (symlinked to `~/.config/rex/init.lua`) gives the
+[Rex](https://www.superlogical.com/rex/docs) terminal the same pane keys as
+`.tmux.conf`: `ctrl+b` then `v`/`s` to split, `h`/`j`/`k`/`l` to move (or
+`alt+h`/`j`/`k`/`l` and `alt+arrows` with no prefix), `shift+h`/`j`/`k`/`l` and
+`alt+h`/`j`/`k`/`l` after the prefix to resize, and `shift+left`/`right` for tabs.
+Press `ctrl+b` twice to send it to the terminal. Rex only reads the file on
+`rex config reload` (or `ctrl+b` then `r`).
+
 ## Compatibility
 
 These dotfiles are tested and known to work on macOS (using `homebrew`)

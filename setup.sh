@@ -164,6 +164,20 @@ eval $CMD
 
 echo "direnv setup complete!"
 
+# Rex terminal config: link the whole directory so init.lua can require() siblings
+echo "Setting up Rex config..."
+
+mkdir -p ~/.config
+
+[ -e ~/.config/rex ] && [ ! -L ~/.config/rex ] && rm -rf ~/.config/rex.bak && mv ~/.config/rex ~/.config/rex.bak && echo "Backed up ~/.config/rex to ~/.config/rex.bak"
+[ -L ~/.config/rex ] && rm ~/.config/rex
+
+CMD="ln -sfn $PWD/config/rex $HOME/.config/rex"
+echo "RUNNING: $CMD"
+eval $CMD
+
+echo "Rex config setup complete! Run 'rex config reload' in Rex to apply it."
+
 # Global gitignore: git reads ~/.config/git/ignore without any gitconfig entry
 echo "Setting up global gitignore..."
 
