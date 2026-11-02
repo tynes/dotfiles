@@ -14,7 +14,34 @@ These are my personal dotfiles for setting up a consistent development environme
    ./setup.sh
    ```
 
-The setup script will back up your existing dotfiles to `/tmp/dotfile_backup` and then create symlinks to the files in this repository.
+The setup script links each config in this repository into place (`~/.bashrc`,
+`~/.config/nvim`, `~/.ssh/config`, ...). The full list is `link_all` in
+`setup.sh`; add new dotfiles there, since it links nothing else.
+
+To see what it would change first:
+
+```bash
+./setup.sh --dry-run
+```
+
+It is safe to re-run. Links that are already right are left alone, and any file,
+directory or foreign link in the way is moved (never deleted) to
+`~/.local/state/dotfiles/backups/<timestamp>/`, which only you can read. To
+restore something, move it back from there.
+
+Because every link points into this repository, whoever can write to the repo
+can change what your shell runs at login. So `setup.sh`:
+
+- refuses to run if `$HOME` isn't yours (for example under `sudo`) or if any
+  file in the repo is owned by another user,
+- removes group/world write permission from the repo,
+- only links files git tracks, and warns about untracked files inside linked
+  directories such as `bin/`,
+- keeps `~/.ssh` and `~/.ssh/config.d` at mode 700,
+- makes no network calls and never uses sudo.
+
+At the end it lists any leftover links into the repo that it no longer manages
+(such as links to files that were deleted), so you can remove them by hand.
 
 ## Installing packages
 
