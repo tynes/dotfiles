@@ -1,1208 +1,723 @@
 #!/bin/bash
 #
-# Install dependencies for dotfiles
-# Supports: macOS (Homebrew), Debian/Ubuntu (apt)
+# Install the tools these dotfiles expect.
+# Supports macOS (Homebrew) and Debian/Ubuntu (apt, x86_64).
 #
+#   ./install.sh            install everything
+#   ./install.sh fzf jj     run only these steps
+#   ./install.sh --list     list the steps for this OS
+#
+# Steps are independent: a failed step is reported at the end and the rest
+# still run. Re-running is safe; tools that are already installed are skipped.
+#
+# Written for bash 3.2 (macOS /bin/bash): no associative arrays, and no
+# expanding an empty array under `set -u`.
 
-set -e
+set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BIN_DIR="$HOME/.local/bin"
 
-info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# --- Packages -----------------------------------------------------------------
 
-# Detect OS and package manager
-detect_os() {
-    if [[ "$(uname)" == "Darwin" ]]; then
-        echo "macos"
-    elif [[ -f /etc/debian_version ]]; then
-        echo "debian"
-    else
-        echo "unknown"
-    fi
-}
+BREW_PACKAGES=(
+    eza bat zoxide fzf neovim difftastic git-delta direnv tmux git tig htop
+    ripgrep fd tree go node pnpm bun python@3 uv gh jj jq just bitwarden-cli
+    gcloud-cli awscli claude-code@latest codex nvimpager moor watch tailscale
+    ghostty antigravity-cli gnupg orbstack openssh mosh starship worktrunk
+    rclone gcalcli wget semgrep hcloud protobuf openjdk@21 maven php fswatch
+    superfile muse-code flarectl cloudflare-wrangler coreutils
+)
 
-OS=$(detect_os)
-info "Detected OS: $OS"
+APT_PACKAGES=(
+    git tig tmux htop direnv ripgrep fd-find tree curl unzip ca-certificates
+    python3 python3-pip python3-venv python-is-python3 build-essential scdoc
+    jq procps gnupg openssh-client openssh-server mosh openssl libssl-dev
+    pkg-config wget php php-cli php-common bat
+)
 
-# Install Homebrew on macOS if not present
-install_homebrew() {
-    if ! command -v brew &> /dev/null; then
-        info "Installing Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-}
+# --- Steps --------------------------------------------------------------------
+# Each step NAME runs the function install_NAME, in this order.
 
-# Core packages available in most package managers
-install_packages() {
-    case $OS in
-        macos)
-            install_homebrew
-            info "Installing packages via Homebrew..."
-            brew install \
-                eza \
-                bat \
-                zoxide \
-                fzf \
-                neovim \
-                difftastic \
-                git-delta \
-                direnv \
-                tmux \
-                git \
-                tig \
-                htop \
-                ripgrep \
-                fd \
-                tree \
-                go \
-                node \
-                pnpm \
-                bun \
-                python@3 \
-                uv \
-                gh \
-                jj \
-                jq \
-                just \
-                bitwarden-cli \
-                gcloud-cli \
-                awscli \
-                claude-code@latest \
-                codex \
-                nvimpager \
-                moor \
-                watch \
-                tailscale \
-                ghostty \
-                antigravity-cli \
-                gnupg \
-                orbstack \
-                openssh \
-                mosh \
-                starship \
-                worktrunk \
-                rclone \
-                gcalcli \
-                wget \
-                semgrep \
-                hcloud \
-                protobuf \
-                openjdk@21 \
-                maven \
-                php \
-                fswatch \
-                superfile \
-                muse-code \
-                flarectl \
-                cloudflare-wrangler \
-                coreutils
+MACOS_STEPS=(
+    rust brew_packages python_symlink
+    foundry amp grok opencode pi keepassxcr
+    nvim_plugins
+)
 
-            # Ensure 'python' command points to python3
-            install_python_symlink_macos
+DEBIAN_STEPS=(
+    apt_packages rust
+    neovim eza fzf zoxide difftastic delta go node pnpm bun uv foundry gh jj
+    just bitwarden gcloud awscli claude codex antigravity nvimpager moor
+    tailscale ghostty docker starship worktrunk rclone gcalcli semgrep hcloud
+    protobuf java maven amp grok opencode pi superfile muse flarectl wrangler
+    keepassxcr
+    nvim_plugins
+)
 
-            # Foundry - Ethereum development toolkit
-            install_foundry
+# Steps that only warn when they fail, so the run can still succeed.
+#   ghostty: debian.griffo.io's apt mirror now needs a paid subscription.
+OPTIONAL_STEPS=(ghostty)
 
-            # Amp - AI coding agent
-            install_amp
+# --- Output -------------------------------------------------------------------
 
-            # Grok - xAI coding agent CLI
-            install_grok
+info()  { printf '\033[0;32m[INFO]\033[0m %s\n' "$*"; }
+warn()  { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }
+error() { printf '\033[0;31m[ERROR]\033[0m %s\n' "$*" >&2; }
+die()   { error "$@"; exit 1; }
 
-            # opencode - AI coding agent
-            install_opencode
+# --- Platform -----------------------------------------------------------------
 
-            # pi - AI coding agent
-            install_pi
+OS=unknown
+DISTRO_ID=""  # debian, ubuntu, ...
+CODENAME=""   # bookworm, noble, ...
+case "$(uname -s)" in
+    Darwin) OS=macos ;;
+    Linux)
+        if [ -f /etc/debian_version ]; then
+            OS=debian
+        fi
+        if [ -r /etc/os-release ]; then
+            # shellcheck source=/dev/null
+            DISTRO_ID=$(. /etc/os-release && echo "${ID:-}")
+            # shellcheck source=/dev/null
+            CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}")
+        fi
+        ;;
+esac
 
-            # keepassxcr - KeePass CLI used by envrc-vault / `vault_export` in .envrc
-            install_keepassxcr
-            ;;
-        debian)
-            info "Updating apt cache..."
-            sudo apt update
+case "$(uname -m)" in
+    x86_64) GOARCH=amd64 ;;
+    aarch64 | arm64) GOARCH=arm64 ;;
+    *) GOARCH=unknown ;;
+esac
 
-            info "Installing packages via apt..."
-            sudo apt install -y \
-                git \
-                tig \
-                tmux \
-                htop \
-                direnv \
-                ripgrep \
-                fd-find \
-                tree \
-                curl \
-                unzip \
-                python3 \
-                python3-pip \
-                python3-venv \
-                python-is-python3 \
-                build-essential \
-                scdoc \
-                jq \
-                procps \
-                gnupg \
-                openssh-client \
-                openssh-server \
-                mosh \
-                openssl \
-                libssl-dev \
-                pkg-config \
-                wget \
-                php \
-                php-cli \
-                php-common
-
-            # neovim - get latest from GitHub releases (apt version is often outdated)
-            install_neovim_linux
-
-            # eza - not in default repos, install from GitHub
-            install_eza_linux
-
-            # bat - package name differs
-            sudo apt install -y bat || sudo apt install -y batcat
-
-            # fzf - install from GitHub (apt version is outdated)
-            install_fzf_linux
-
-            # zoxide - install from GitHub
-            install_zoxide_linux
-
-            # difftastic - install from cargo or GitHub
-            install_difftastic_linux
-
-            # git-delta - install from GitHub
-            install_delta_linux
-
-            # Go - install from official releases
-            install_go_linux
-
-            # Node.js - install from NodeSource
-            install_node_linux
-
-            # pnpm - fast, disk space efficient package manager
-            install_pnpm_linux
-
-            # bun - JavaScript runtime and package manager
-            install_bun_linux
-
-            # uv - Python package manager
-            install_uv_linux
-
-            # Foundry - Ethereum development toolkit
-            install_foundry
-
-            # gh - GitHub CLI
-            install_gh_linux
-
-            # jj - Jujutsu version control
-            install_jj_linux
-
-            # just - command runner
-            install_just_linux
-
-            # bitwarden-cli - password manager CLI
-            install_bitwarden_cli_linux
-
-            # gcloud - Google Cloud CLI
-            install_gcloud_linux
-
-            # awscli - AWS CLI
-            install_awscli_linux
-
-            # claude-code - Claude Code CLI
-            install_claude_code_linux
-
-            # codex - OpenAI Codex CLI
-            install_codex_linux
-
-            # antigravity-cli - Google Antigravity CLI
-            install_antigravity_cli_linux
-
-            # nvimpager - neovim-based pager
-            install_nvimpager
-
-            # moor - pager
-            install_moor
-
-            # tailscale - VPN and mesh networking
-            install_tailscale_linux
-
-            # ghostty - terminal emulator
-            install_ghostty_linux
-
-            # docker - container platform
-            install_docker_linux
-
-            # starship - cross-shell prompt
-            install_starship_linux
-
-            # worktrunk - workspace management
-            install_worktrunk_linux
-
-            # rclone - cloud storage sync
-            install_rclone_linux
-
-            # gcalcli - Google Calendar CLI
-            install_gcalcli_linux
-
-            # semgrep - static analysis
-            install_semgrep_linux
-
-            # hcloud - Hetzner Cloud CLI
-            install_hcloud_linux
-
-            # protobuf - Protocol Buffers compiler
-            install_protobuf_linux
-
-            # Java - OpenJDK via Adoptium
-            install_java_linux
-
-            # Maven - Java build tool
-            install_maven_linux
-
-            # Amp - AI coding agent
-            install_amp
-
-            # Grok - xAI coding agent CLI
-            install_grok
-
-            # opencode - AI coding agent
-            install_opencode
-
-            # pi - AI coding agent
-            install_pi
-
-            # superfile - terminal file manager
-            install_superfile_linux
-
-            # Muse Code - Meta's AI coding agent
-            install_muse_code_linux
-
-            # flarectl - Cloudflare CLI
-            install_flarectl_linux
-
-            # wrangler - Cloudflare Workers CLI
-            install_wrangler_linux
-
-            # keepassxcr - KeePass CLI used by envrc-vault / `vault_export` in .envrc
-            install_keepassxcr
-            ;;
-        *)
-            error "Unsupported OS. Please install packages manually."
-            exit 1
-            ;;
+# Put every directory the installers write to on PATH now, so "already
+# installed" checks work in a fresh shell, later steps can find tools that
+# earlier steps installed, and vendor scripts that only edit ~/.bashrc when
+# their directory is missing from PATH leave it alone (it's a repo symlink).
+for dir in "$HOME/.local/bin" "$HOME/.cargo/bin" /usr/local/go/bin \
+    "$HOME/.bun/bin" "$HOME/.foundry/bin" "$HOME/.grok/bin" "$HOME/.opencode/bin"; do
+    case ":$PATH:" in
+        *":$dir:"*) ;;
+        *) PATH="$dir:$PATH" ;;
     esac
+done
+export PATH
+
+TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX")
+trap 'rm -rf "$TMP_ROOT"' EXIT
+
+# --- Helpers ------------------------------------------------------------------
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# already CMD [LABEL]: true (and says so) if CMD is on PATH.
+already() {
+    have "$1" || return 1
+    info "${2:-$1} already installed"
 }
 
-install_python_symlink_macos() {
-    if command -v python &> /dev/null; then
+# sudo that also works as root without sudo installed (containers, cloud-init).
+sudo() {
+    if [ "$(id -u)" -eq 0 ]; then
+        if [ "${1:-}" = "-E" ]; then shift; fi
+        "$@"
+    else
+        command sudo "$@"
+    fi
+}
+
+# A fresh temporary directory, removed when the script exits.
+step_tmp() { mktemp -d "$TMP_ROOT/step.XXXXXX"; }
+
+# fetch URL DEST: download over HTTPS, failing on HTTP errors.
+fetch() {
+    curl -fsSL --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 -o "$2" "$1"
+}
+
+# run_installer URL SHELL [ARGS...]: download a vendor install script, then run
+# it. Downloading first means a dropped connection can't run half a script.
+# stdin is /dev/null, as it was for `curl | sh`.
+run_installer() {
+    local url=$1 shell=$2 script
+    shift 2
+    script="$(step_tmp)/install.sh"
+    fetch "$url" "$script"
+    "$shell" "$script" "$@" </dev/null
+}
+
+# github_api PATH: GET from the GitHub API. Set $GITHUB_TOKEN to avoid the
+# anonymous limit of 60 requests an hour.
+github_api() {
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        curl -fsSL --retry 3 -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/$1"
+    else
+        curl -fsSL --retry 3 "https://api.github.com/$1"
+    fi
+}
+
+# gh_latest_tag OWNER/REPO: tag of the latest release.
+gh_latest_tag() {
+    local tag
+    tag=$(github_api "repos/$1/releases/latest" | jq -r '.tag_name // empty') || true
+    if [ -z "$tag" ]; then
+        error "Could not find the latest release of $1"
+        return 1
+    fi
+    printf '%s\n' "$tag"
+}
+
+# install_release_asset URL BINARY [tar.gz|zip|raw]: download URL, pull BINARY
+# out of it and install it to ~/.local/bin. The format is guessed from the URL.
+install_release_asset() {
+    local url=$1 bin=$2 kind=${3:-} dir found
+    if [ -z "$kind" ]; then
+        case "${url%%\?*}" in
+            *.tar.gz | *.tgz) kind=tar.gz ;;
+            *.zip) kind=zip ;;
+            *) kind=raw ;;
+        esac
+    fi
+    dir=$(step_tmp)
+    fetch "$url" "$dir/download"
+    case "$kind" in
+        tar.gz) tar -xzf "$dir/download" -C "$dir" ;;
+        zip) unzip -q "$dir/download" -d "$dir" ;;
+        raw) mv "$dir/download" "$dir/$bin" ;;
+    esac
+    found=$(find "$dir" -type f -name "$bin" -print -quit)
+    if [ -z "$found" ]; then
+        error "$bin not found in $url"
+        return 1
+    fi
+    mkdir -p "$BIN_DIR"
+    install -m 0755 "$found" "$BIN_DIR/$bin"
+    info "$bin installed to $BIN_DIR/$bin"
+}
+
+# install_github_bin CMD OWNER/REPO ASSET [BINARY]: install CMD from the latest
+# GitHub release. ASSET may use {tag} (v1.2.3) and {version} (1.2.3).
+install_github_bin() {
+    local cmd=$1 repo=$2 asset=$3 bin=${4:-$1} tag
+    already "$cmd" && return
+    tag=$(gh_latest_tag "$repo")
+    asset=${asset//\{tag\}/$tag}
+    asset=${asset//\{version\}/${tag#v}}
+    info "Installing $cmd $tag from GitHub releases..."
+    install_release_asset "https://github.com/$repo/releases/download/$tag/$asset" "$bin"
+}
+
+apt_install() { sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"; }
+
+# add_apt_repo NAME KEY_URL SOURCE: add an apt repository signed by the key at
+# KEY_URL. SOURCE is the "deb ..." line; {keyring} becomes the key's path.
+add_apt_repo() {
+    local name=$1 key_url=$2 source=$3 keyring="/etc/apt/keyrings/$1.gpg" key
+    key="$(step_tmp)/key"
+    fetch "$key_url" "$key"
+    sudo install -m 0755 -d /etc/apt/keyrings
+    if grep -q -- '-----BEGIN PGP' "$key"; then
+        sudo gpg --dearmor --yes -o "$keyring" "$key"
+    else
+        sudo install -m 0644 "$key" "$keyring"
+    fi
+    sudo chmod a+r "$keyring"
+    printf '%s\n' "${source//\{keyring\}/$keyring}" |
+        sudo tee "/etc/apt/sources.list.d/$name.list" >/dev/null
+    sudo apt-get update
+}
+
+# apt_repo_install NAME KEY_URL SOURCE PACKAGE...: add an apt repository (see
+# add_apt_repo) and install PACKAGEs from it. If that fails the repository is
+# removed again, so a broken or paywalled repo can't break later apt runs.
+apt_repo_install() {
+    local name=$1 key_url=$2 source=$3 rc
+    shift 3
+    set +e
+    (
+        set -e
+        add_apt_repo "$name" "$key_url" "$source"
+        apt_install "$@"
+    )
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        warn "Removing the $name apt repository so it can't break later apt runs"
+        sudo rm -f "/etc/apt/sources.list.d/$name.list" "/etc/apt/keyrings/$name.gpg"
+    fi
+    return "$rc"
+}
+
+# uv_tool_install PKG: isolated Python CLI install via uv (or pipx).
+uv_tool_install() {
+    if have uv; then
+        uv tool install "$1"
+    elif have pipx; then
+        pipx install "$1"
+    else
+        error "uv or pipx is required to install $1"
+        return 1
+    fi
+}
+
+# npm_global_install ARGS...: `npm install -g`, into ~/.local on Linux. Passes
+# --prefix rather than `npm config set prefix`, which would rewrite ~/.npmrc
+# (a symlink into this repo).
+npm_global_install() {
+    if ! have npm; then
+        error "Node.js/npm is required but not found"
+        return 1
+    fi
+    if [ "$OS" = debian ]; then
+        npm install -g --prefix "$HOME/.local" --no-fund --no-audit "$@"
+    else
+        npm install -g --no-fund --no-audit "$@"
+    fi
+}
+
+require_cargo() {
+    have cargo && return
+    error "cargo is required but not found"
+    return 1
+}
+
+# --- Package managers ---------------------------------------------------------
+
+find_brew() {
+    local p
+    for p in "$(command -v brew || true)" /opt/homebrew/bin/brew /usr/local/bin/brew; do
+        if [ -n "$p" ] && [ -x "$p" ]; then
+            printf '%s\n' "$p"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Not a step: every macOS step needs brew on PATH, including in a shell that
+# hasn't loaded Homebrew's environment yet (such as right after installing it).
+setup_homebrew() {
+    local brew_bin script
+    if ! brew_bin=$(find_brew); then
+        info "Installing Homebrew..."
+        script="$(step_tmp)/install.sh"
+        fetch https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh "$script"
+        /bin/bash "$script" # interactive: it asks for the sudo password
+        brew_bin=$(find_brew) || die "Homebrew install finished but brew was not found"
+    fi
+    eval "$("$brew_bin" shellenv)"
+}
+
+install_brew_packages() {
+    info "Installing packages via Homebrew..."
+    brew install "${BREW_PACKAGES[@]}"
+}
+
+install_apt_packages() {
+    info "Installing packages via apt..."
+    sudo apt-get update
+    apt_install "${APT_PACKAGES[@]}"
+}
+
+install_rust() {
+    already cargo Rust && return
+    info "Installing Rust..."
+    # ~/.profile already sources ~/.cargo/env, so rustup needn't edit rc files.
+    run_installer https://sh.rustup.rs sh -y --no-modify-path
+}
+
+# --- macOS --------------------------------------------------------------------
+
+install_python_symlink() {
+    if have python; then
         info "'python' command already available"
         return
     fi
-    info "Creating 'python' symlink to python3..."
-    BREW_PREFIX=$(brew --prefix)
-    if [ -x "$BREW_PREFIX/bin/python3" ]; then
-        ln -sf "$BREW_PREFIX/bin/python3" "$BREW_PREFIX/bin/python"
+    local prefix
+    prefix=$(brew --prefix)
+    if [ -x "$prefix/bin/python3" ]; then
+        ln -sf "$prefix/bin/python3" "$prefix/bin/python"
         info "'python' now points to python3"
     else
         warn "python3 not found in Homebrew prefix, skipping symlink"
     fi
 }
 
-install_neovim_linux() {
-    if command -v nvim &> /dev/null; then
-        info "neovim already installed"
-        return
-    fi
+# --- Linux: binaries from GitHub releases -------------------------------------
+
+install_eza()        { install_github_bin eza eza-community/eza "eza_x86_64-unknown-linux-musl.tar.gz"; }
+install_fzf()        { install_github_bin fzf junegunn/fzf "fzf-{version}-linux_amd64.tar.gz"; }
+install_difftastic() { install_github_bin difft Wilfred/difftastic "difft-{tag}-x86_64-unknown-linux-gnu.tar.gz"; }
+install_delta()      { install_github_bin delta dandavison/delta "delta-{tag}-x86_64-unknown-linux-gnu.tar.gz"; }
+install_jj()         { install_github_bin jj jj-vcs/jj "jj-{tag}-x86_64-unknown-linux-musl.tar.gz"; }
+install_just()       { install_github_bin just casey/just "just-{tag}-x86_64-unknown-linux-musl.tar.gz"; }
+install_moor()       { install_github_bin moor walles/moor "moor-{tag}-linux-amd64"; }
+install_hcloud()     { install_github_bin hcloud hetznercloud/cli "hcloud-linux-amd64.tar.gz"; }
+
+install_bitwarden() {
+    already bw bitwarden-cli && return
+    # The repo releases every Bitwarden client; take the newest CLI one.
+    local tag
+    tag=$(github_api "repos/bitwarden/clients/releases?per_page=100" |
+        jq -r '[.[].tag_name | select(startswith("cli-v"))][0] // empty')
+    [ -n "$tag" ] || die "Could not find the latest bitwarden-cli release"
+    info "Installing bitwarden-cli $tag..."
+    install_release_asset "https://github.com/bitwarden/clients/releases/download/$tag/bw-linux-${tag#cli-v}.zip" bw
+}
+
+install_flarectl() {
+    already flarectl && return
+    [ "$GOARCH" != unknown ] || die "Unsupported architecture for flarectl: $(uname -m)"
+    # flarectl only ships with the v0.x releases of cloudflare-go; "latest" is a
+    # newer major version without it, so pick the highest v0 tag.
+    local tag
+    tag=$(github_api repos/cloudflare/cloudflare-go/git/matching-refs/tags/v0. |
+        jq -r '.[].ref | sub("refs/tags/"; "")' | sort -V | tail -n 1)
+    [ -n "$tag" ] || die "Could not find the latest flarectl release"
+    info "Installing flarectl $tag..."
+    install_release_asset "https://github.com/cloudflare/cloudflare-go/releases/download/$tag/flarectl_${tag#v}_linux_$GOARCH.tar.gz" flarectl
+}
+
+install_neovim() {
+    already nvim neovim && return
+    # apt's neovim is usually too old for AstroNvim.
     info "Installing neovim from GitHub releases..."
-    curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
-    sudo rm -rf /opt/nvim
-    sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+    local tarball
+    tarball="$(step_tmp)/nvim.tar.gz"
+    fetch https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz "$tarball"
+    sudo rm -rf /opt/nvim-linux-x86_64
+    sudo tar -C /opt -xzf "$tarball"
     sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
-    rm nvim-linux-x86_64.tar.gz
 }
 
-install_eza_linux() {
-    if command -v eza &> /dev/null; then
-        info "eza already installed"
-        return
-    fi
-    info "Installing eza from GitHub releases..."
-
-    # Get the latest version tag from GitHub API
-    EZA_VERSION=$(curl -s https://api.github.com/repos/eza-community/eza/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-
-    if [ -z "$EZA_VERSION" ]; then
-        error "Failed to get latest eza version"
-        return 1
-    fi
-
-    info "Downloading eza $EZA_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -L "https://github.com/eza-community/eza/releases/download/${EZA_VERSION}/eza_x86_64-unknown-linux-musl.tar.gz" -o /tmp/eza.tar.gz
-    tar -xzf /tmp/eza.tar.gz -C ~/.local/bin
-    chmod +x ~/.local/bin/eza
-    rm /tmp/eza.tar.gz
-
-    info "eza installed to ~/.local/bin/eza"
-}
-
-install_zoxide_linux() {
-    if command -v zoxide &> /dev/null; then
-        info "zoxide already installed"
-        return
-    fi
-    info "Installing zoxide..."
-    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
-}
-
-install_fzf_linux() {
-    if command -v fzf &> /dev/null; then
-        info "fzf already installed"
-        return
-    fi
-    info "Installing fzf from GitHub releases..."
-
-    # Get the latest version tag from GitHub API
-    FZF_VERSION=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | jq -r '.tag_name')
-
-    if [ -z "$FZF_VERSION" ] || [ "$FZF_VERSION" = "null" ]; then
-        error "Failed to get latest fzf version"
-        return 1
-    fi
-
-    # Version in filename doesn't have 'v' prefix
-    FZF_VERSION_NUM=${FZF_VERSION#v}
-
-    info "Downloading fzf $FZF_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -fL "https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION_NUM}-linux_amd64.tar.gz" -o /tmp/fzf.tar.gz
-    tar -xzf /tmp/fzf.tar.gz -C ~/.local/bin
-    chmod +x ~/.local/bin/fzf
-    rm /tmp/fzf.tar.gz
-
-    info "fzf installed to ~/.local/bin/fzf"
-}
-
-install_difftastic_linux() {
-    if command -v difft &> /dev/null; then
-        info "difftastic already installed"
-        return
-    fi
-    info "Installing difftastic from GitHub releases..."
-    mkdir -p ~/.local/bin
-    curl -LO https://github.com/Wilfred/difftastic/releases/latest/download/difft-x86_64-unknown-linux-gnu.tar.gz
-    tar xzf difft-x86_64-unknown-linux-gnu.tar.gz
-    mv difft ~/.local/bin/
-    rm difft-x86_64-unknown-linux-gnu.tar.gz
-}
-
-install_delta_linux() {
-    if command -v delta &> /dev/null; then
-        info "git-delta already installed"
-        return
-    fi
-    info "Installing git-delta from GitHub releases..."
-
-    # Get the latest version tag from GitHub API
-    DELTA_VERSION=$(curl -s https://api.github.com/repos/dandavison/delta/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-
-    if [ -z "$DELTA_VERSION" ]; then
-        error "Failed to get latest delta version"
-        return 1
-    fi
-
-    info "Downloading git-delta $DELTA_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -LO "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-    tar xzf "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-    mv "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu/delta" ~/.local/bin/
-    rm -rf "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu" "delta-${DELTA_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-}
-
-install_go_linux() {
-    if command -v go &> /dev/null; then
-        info "Go already installed"
-        return
-    fi
-    info "Installing Go from official releases..."
-
-    # Get the latest Go version from the official API
-    GO_VERSION=$(curl -s 'https://go.dev/dl/?mode=json' | grep -m1 '"version"' | cut -d'"' -f4 | sed 's/go//')
-
-    if [ -z "$GO_VERSION" ]; then
-        error "Failed to get latest Go version"
-        return 1
-    fi
-
-    info "Downloading Go $GO_VERSION..."
-    curl -LO "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-    sudo rm -rf /usr/local/go
-    sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
-    rm "go${GO_VERSION}.linux-amd64.tar.gz"
-}
-
-install_node_linux() {
-    if command -v node &> /dev/null; then
-        info "Node.js already installed"
-        return
-    fi
-    info "Installing Node.js via NodeSource..."
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-    sudo apt install -y nodejs
-}
-
-install_pnpm_linux() {
-    if command -v pnpm &> /dev/null; then
-        info "pnpm already installed"
-        return
-    fi
-    info "Installing pnpm..."
-    curl -fsSL https://get.pnpm.io/install.sh | sh -
-    info "pnpm installed"
-}
-
-install_bun_linux() {
-    if command -v bun &> /dev/null; then
-        info "bun already installed"
-        return
-    fi
-    info "Installing bun..."
-    curl -fsSL https://bun.sh/install | bash
-    info "bun installed"
-}
-
-install_uv_linux() {
-    if command -v uv &> /dev/null; then
-        info "uv already installed"
-        return
-    fi
-    info "Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    # Add ~/.local/bin to PATH to make uv available in current session
-    export PATH="$HOME/.local/bin:$PATH"
-}
-
-install_foundry() {
-    if command -v forge &> /dev/null; then
-        info "Foundry already installed"
-        return
-    fi
-    info "Installing Foundry..."
-    curl -L https://foundry.paradigm.xyz | bash
-    ~/.foundry/bin/foundryup
-}
-
-install_gh_linux() {
-    if command -v gh &> /dev/null; then
-        info "gh already installed"
-        return
-    fi
-    info "Installing GitHub CLI..."
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    sudo apt update
-    sudo apt install -y gh
-}
-
-install_jj_linux() {
-    if command -v jj &> /dev/null; then
-        info "jj already installed"
-        return
-    fi
-    info "Installing Jujutsu from GitHub releases..."
-
-    # Get the latest version tag from GitHub API
-    JJ_VERSION=$(curl -s https://api.github.com/repos/jj-vcs/jj/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-
-    if [ -z "$JJ_VERSION" ]; then
-        error "Failed to get latest jj version"
-        return 1
-    fi
-
-    info "Downloading jj $JJ_VERSION..."
-    mkdir -p ~/.local/bin
-
-    # Download and extract the binary (extract only the jj binary, not the directory metadata)
-    curl -L "https://github.com/jj-vcs/jj/releases/download/${JJ_VERSION}/jj-${JJ_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/jj.tar.gz
-    tar -xzf /tmp/jj.tar.gz -C ~/.local/bin ./jj
-    chmod +x ~/.local/bin/jj
-    rm /tmp/jj.tar.gz
-
-    info "jj installed to ~/.local/bin/jj"
-}
-
-install_just_linux() {
-    if command -v just &> /dev/null; then
-        info "just already installed"
-        return
-    fi
-    info "Installing just from GitHub releases..."
-
-    # Get the latest version tag from GitHub API
-    JUST_VERSION=$(curl -s https://api.github.com/repos/casey/just/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-
-    if [ -z "$JUST_VERSION" ]; then
-        error "Failed to get latest just version"
-        return 1
-    fi
-
-    info "Downloading just $JUST_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -L "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/just.tar.gz
-    tar -xzf /tmp/just.tar.gz -C ~/.local/bin just
-    chmod +x ~/.local/bin/just
-    rm /tmp/just.tar.gz
-
-    info "just installed to ~/.local/bin/just"
-}
-
-install_bitwarden_cli_linux() {
-    if command -v bw &> /dev/null; then
-        info "bitwarden-cli already installed"
-        return
-    fi
-    info "Installing bitwarden-cli from GitHub releases..."
-
-    # Get the latest CLI version tag from GitHub API
-    BW_VERSION=$(curl -s https://api.github.com/repos/bitwarden/clients/releases | grep '"tag_name"' | grep 'cli-v' | head -1 | cut -d'"' -f4)
-
-    if [ -z "$BW_VERSION" ]; then
-        error "Failed to get latest bitwarden-cli version"
-        return 1
-    fi
-
-    info "Downloading bitwarden-cli $BW_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -L "https://github.com/bitwarden/clients/releases/download/${BW_VERSION}/bw-linux-${BW_VERSION#cli-v}.zip" -o /tmp/bw.zip
-    unzip -o /tmp/bw.zip -d ~/.local/bin
-    chmod +x ~/.local/bin/bw
-    rm /tmp/bw.zip
-
-    info "bitwarden-cli installed to ~/.local/bin/bw"
-}
-
-install_gcloud_linux() {
-    if command -v gcloud &> /dev/null; then
-        info "gcloud already installed"
-        return
-    fi
-    info "Installing Google Cloud CLI..."
-
-    # Import the Google Cloud public key first (before adding the source)
-    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-
-    # Add the Cloud SDK distribution URI as a package source
-    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list > /dev/null
-
-    # Update and install the Cloud SDK
-    sudo apt update && sudo apt install -y google-cloud-cli
-
-    info "Google Cloud CLI installed"
-}
-
-install_awscli_linux() {
-    if command -v aws &> /dev/null; then
-        info "AWS CLI already installed"
-        return
-    fi
-    info "Installing AWS CLI..."
-
-    # Download and install AWS CLI v2
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-    unzip -o /tmp/awscliv2.zip -d /tmp
-    sudo /tmp/aws/install
-    rm -rf /tmp/awscliv2.zip /tmp/aws
-
-    info "AWS CLI installed"
-}
-
-install_claude_code_linux() {
-    if command -v claude &> /dev/null; then
-        info "Claude Code already installed"
-        return
-    fi
-    info "Installing Claude Code..."
-
-    curl -fsSL https://claude.ai/install.sh | bash
-
-    info "Claude Code installed"
-}
-
-install_codex_linux() {
-    if command -v codex &> /dev/null; then
-        info "codex already installed"
-        return
-    fi
-    info "Installing OpenAI Codex..."
-
-    curl -fsSL https://chatgpt.com/codex/install.sh | sh
-
-    info "codex installed"
-}
-
-install_antigravity_cli_linux() {
-    if command -v antigravity &> /dev/null; then
-        info "Antigravity CLI already installed"
-        return
-    fi
-    info "Installing Antigravity CLI..."
-
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64) MANIFEST_ARCH="amd64" ;;
-        aarch64|arm64) MANIFEST_ARCH="arm64" ;;
-        *)
-            error "Unsupported architecture for Antigravity CLI: $ARCH"
-            return 1
-            ;;
-    esac
-
-    ANTIGRAVITY_URL=$(curl -s "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_${MANIFEST_ARCH}.json" | jq -r '.url')
-
-    if [ -z "$ANTIGRAVITY_URL" ] || [ "$ANTIGRAVITY_URL" = "null" ]; then
-        error "Failed to get latest Antigravity CLI download URL"
-        return 1
-    fi
-
-    mkdir -p ~/.local/bin
-    curl -fL "$ANTIGRAVITY_URL" -o /tmp/antigravity-cli.tar.gz
-    tar -xzf /tmp/antigravity-cli.tar.gz -C /tmp
-    mv /tmp/antigravity ~/.local/bin/antigravity
-    chmod +x ~/.local/bin/antigravity
-    rm -f /tmp/antigravity-cli.tar.gz
-
-    info "Antigravity CLI installed to ~/.local/bin/antigravity"
+install_protobuf() {
+    already protoc && return
+    local tag zip
+    tag=$(gh_latest_tag protocolbuffers/protobuf)
+    info "Installing protoc $tag..."
+    zip="$(step_tmp)/protoc.zip"
+    fetch "https://github.com/protocolbuffers/protobuf/releases/download/$tag/protoc-${tag#v}-linux-x86_64.zip" "$zip"
+    sudo unzip -q -o "$zip" -d /usr/local bin/protoc 'include/*'
 }
 
 install_nvimpager() {
-    if command -v nvimpager &> /dev/null; then
-        info "nvimpager already installed"
-        return
-    fi
-    info "Installing nvimpager..."
-    git clone https://github.com/lucc/nvimpager.git /tmp/nvimpager
-    cd /tmp/nvimpager
-    sudo make install
-    cd -
-    rm -rf /tmp/nvimpager
+    already nvimpager && return
+    info "Installing nvimpager from source..."
+    local src
+    src="$(step_tmp)/nvimpager"
+    git clone --depth 1 https://github.com/lucc/nvimpager.git "$src"
+    sudo make -C "$src" install
 }
 
-install_moor() {
-    if command -v moor &> /dev/null; then
-        info "moor already installed"
-        return
-    fi
-    info "Installing moor from GitHub releases..."
+# --- Linux: other downloads ---------------------------------------------------
 
-    # Get the latest version tag from GitHub API
-    MOOR_VERSION=$(curl -s https://api.github.com/repos/walles/moor/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-
-    if [ -z "$MOOR_VERSION" ]; then
-        error "Failed to get latest moor version"
-        return 1
-    fi
-
-    info "Downloading moor $MOOR_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -L "https://github.com/walles/moor/releases/download/${MOOR_VERSION}/moor-${MOOR_VERSION}-linux-amd64" -o ~/.local/bin/moor
-    chmod +x ~/.local/bin/moor
-
-    info "moor installed to ~/.local/bin/moor"
+install_go() {
+    already go Go && return
+    local version tarball
+    version=$(curl -fsSL 'https://go.dev/dl/?mode=json' | jq -r '.[0].version // empty')
+    [ -n "$version" ] || die "Could not find the latest Go version"
+    info "Installing $version..."
+    tarball="$(step_tmp)/go.tar.gz"
+    fetch "https://go.dev/dl/$version.linux-amd64.tar.gz" "$tarball"
+    sudo rm -rf /usr/local/go
+    sudo tar -C /usr/local -xzf "$tarball"
 }
 
-install_tailscale_linux() {
-    if command -v tailscale &> /dev/null; then
-        info "tailscale already installed"
-        return
-    fi
-    info "Installing Tailscale..."
-
-    # Use Tailscale's official install script
-    curl -fsSL https://tailscale.com/install.sh | sh
-
-    info "Tailscale installed"
+install_awscli() {
+    already aws "AWS CLI" && return
+    info "Installing AWS CLI..."
+    local dir
+    dir=$(step_tmp)
+    fetch https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip "$dir/awscli.zip"
+    unzip -q "$dir/awscli.zip" -d "$dir"
+    sudo "$dir/aws/install"
 }
 
-install_ghostty_linux() {
-    if command -v ghostty &> /dev/null; then
-        info "ghostty already installed"
-        return
-    fi
+install_antigravity() {
+    already antigravity "Antigravity CLI" && return
+    [ "$GOARCH" != unknown ] || die "Unsupported architecture for Antigravity CLI: $(uname -m)"
+    local url
+    url=$(curl -fsSL "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_$GOARCH.json" |
+        jq -r '.url // empty')
+    [ -n "$url" ] || die "Could not find the latest Antigravity CLI download"
+    info "Installing Antigravity CLI..."
+    install_release_asset "$url" antigravity tar.gz
+}
+
+install_muse() {
+    already muse "Muse Code" && return
+    local arch version
+    case "$(uname -m)" in
+        x86_64) arch=x86 ;;
+        aarch64 | arm64) arch=aarch64 ;;
+        *) die "Unsupported architecture for Muse Code: $(uname -m)" ;;
+    esac
+    version=$(curl -fsSL https://api.meta.ai/muse-code/channels/muse-stable | jq -r '.version // empty')
+    [ -n "$version" ] || die "Could not find the latest Muse Code version"
+    info "Installing Muse Code $version..."
+    install_release_asset "https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=$version&file=muse-$arch-linux" muse raw
+}
+
+# --- Linux: apt repositories --------------------------------------------------
+
+install_gh() {
+    already gh && return
+    info "Installing GitHub CLI..."
+    apt_repo_install github-cli https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        "deb [arch=$(dpkg --print-architecture) signed-by={keyring}] https://cli.github.com/packages stable main" \
+        gh
+}
+
+install_gcloud() {
+    already gcloud && return
+    info "Installing Google Cloud CLI..."
+    apt_repo_install google-cloud-sdk https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+        "deb [signed-by={keyring}] https://packages.cloud.google.com/apt cloud-sdk main" \
+        google-cloud-cli
+}
+
+install_ghostty() {
+    already ghostty && return
     info "Installing Ghostty from debian.griffo.io..."
-
-    # Add the repository GPG key
-    curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
-
-    # Add the repository (use bookworm which is available on debian.griffo.io)
-    echo "deb https://debian.griffo.io/apt bookworm main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
-
-    # Update and install
-    sudo apt update
-    sudo apt install -y ghostty
-
-    info "Ghostty installed"
+    info "(Its apt mirror needs a subscription. Other options: https://ghostty.org/docs/install/binary)"
+    # debian.griffo.io only publishes a bookworm suite. This is an optional
+    # step (see OPTIONAL_STEPS), so failing here doesn't fail the run.
+    apt_repo_install debian.griffo.io https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc \
+        "deb [signed-by={keyring}] https://debian.griffo.io/apt bookworm main" \
+        ghostty
 }
 
-install_docker_linux() {
-    if command -v docker &> /dev/null; then
-        info "Docker already installed"
-        configure_docker_permissions
-        return
-    fi
-    info "Installing Docker from official repository..."
-
-    # Set up Docker's apt repository
-    sudo apt update
-    sudo apt install -y ca-certificates curl
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-    # Add the repository to apt sources
-    sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
-Components: stable
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
-
-    # Install Docker packages
-    sudo apt update
-    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    info "Docker installed"
-    configure_docker_permissions
+install_java() {
+    already java Java && return
+    info "Installing Eclipse Temurin 21 JDK..."
+    apt_repo_install adoptium https://packages.adoptium.net/artifactory/api/gpg/key/public \
+        "deb [signed-by={keyring}] https://packages.adoptium.net/artifactory/deb $CODENAME main" \
+        temurin-21-jdk
 }
 
-configure_docker_permissions() {
-    info "Configuring Docker permissions..."
+install_maven() {
+    already mvn Maven && return
+    apt_install maven
+}
 
-    # Check if user is already in docker group
-    if groups | grep -q docker; then
-        info "User already in docker group"
-        return
+install_docker() {
+    if ! already docker Docker; then
+        info "Installing Docker..."
+        # Docker publishes separate debian and ubuntu repos; derivatives such as
+        # Mint use ubuntu's (CODENAME is already their UBUNTU_CODENAME).
+        local distro=ubuntu
+        if [ "$DISTRO_ID" = debian ]; then distro=debian; fi
+        sudo rm -f /etc/apt/sources.list.d/docker.sources # from older versions of this script
+        apt_repo_install docker "https://download.docker.com/linux/$distro/gpg" \
+            "deb [arch=$(dpkg --print-architecture) signed-by={keyring}] https://download.docker.com/linux/$distro $CODENAME stable" \
+            docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     fi
 
-    # Try to add user to docker group (will fail gracefully if no sudo access)
-    if sudo usermod -aG docker "$USER" 2>/dev/null; then
-        info "User added to docker group"
-        warn "You need to log out and log back in for the docker group changes to take effect"
-        warn "Or run: newgrp docker"
+    local user=${USER:-$(id -un)}
+    if grep -qw docker <<<"$(id -nG "$user")"; then
+        info "$user already in docker group"
+    elif sudo usermod -aG docker "$user"; then
+        info "Added $user to the docker group"
+        warn "Log out and back in (or run 'newgrp docker') for it to take effect"
     else
-        warn "Could not add user to docker group (sudo access may be required)"
-        warn "You can manually run: sudo usermod -aG docker \$USER"
+        warn "Could not add $user to the docker group; run: sudo usermod -aG docker $user"
     fi
 }
 
-install_starship_linux() {
-    if command -v starship &> /dev/null; then
-        info "starship already installed"
-        return
-    fi
-    info "Installing starship from official installer..."
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
-    info "starship installed"
+# --- Linux: vendor install scripts --------------------------------------------
+
+install_node() {
+    already node Node.js && return
+    info "Installing Node.js LTS via NodeSource..."
+    local script
+    script="$(step_tmp)/setup_lts.sh"
+    fetch https://deb.nodesource.com/setup_lts.x "$script"
+    sudo -E bash "$script"
+    apt_install nodejs
 }
 
-install_worktrunk_linux() {
-    if command -v wt &> /dev/null; then
-        info "worktrunk already installed"
-        return
-    fi
-    info "Installing worktrunk via cargo..."
-
-    if ! command -v cargo &> /dev/null; then
-        error "Cargo is required to install worktrunk but not found"
-        return 1
-    fi
-
-    cargo install worktrunk
-
-    info "worktrunk installed"
-}
-
-install_rclone_linux() {
-    if command -v rclone &> /dev/null; then
-        info "rclone already installed"
-        return
-    fi
+install_rclone() {
+    already rclone && return
     info "Installing rclone..."
-
-    # Use rclone's official install script
-    curl https://rclone.org/install.sh | sudo bash
-
-    info "rclone installed"
+    local script
+    script="$(step_tmp)/install.sh"
+    fetch https://rclone.org/install.sh "$script"
+    sudo bash "$script"
 }
 
-install_gcalcli_linux() {
-    if command -v gcalcli &> /dev/null; then
-        info "gcalcli already installed"
-        return
-    fi
-    info "Installing gcalcli..."
-
-    # Use uv tool install (similar to pipx) for isolated installation
-    if command -v uv &> /dev/null; then
-        uv tool install gcalcli
-    elif command -v pipx &> /dev/null; then
-        pipx install gcalcli
-    else
-        error "uv or pipx is required to install gcalcli but not found"
-        return 1
-    fi
-
-    info "gcalcli installed"
+install_superfile() {
+    already spf superfile && return
+    info "Installing superfile..."
+    local script
+    script="$(step_tmp)/install.sh"
+    fetch https://superfile.dev/install.sh "$script"
+    bash "$script"
 }
 
-install_semgrep_linux() {
-    if command -v semgrep &> /dev/null; then
-        info "semgrep already installed"
-        return
-    fi
-    info "Installing semgrep..."
+install_zoxide()    { already zoxide    || run_installer https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh sh; }
+install_pnpm()      { already pnpm      || run_installer https://get.pnpm.io/install.sh sh; }
+install_bun()       { already bun       || run_installer https://bun.sh/install bash; }
+install_claude()    { already claude "Claude Code" || run_installer https://claude.ai/install.sh bash; }
+install_codex()     { already codex     || run_installer https://chatgpt.com/codex/install.sh sh; }
+install_tailscale() { already tailscale || run_installer https://tailscale.com/install.sh sh; }
+install_starship()  { already starship  || run_installer https://starship.rs/install.sh sh -y; }
 
-    # Use uv tool install (similar to pipx) for isolated installation
-    if command -v uv &> /dev/null; then
-        uv tool install semgrep
-    elif command -v pipx &> /dev/null; then
-        pipx install semgrep
-    else
-        error "uv or pipx is required to install semgrep but not found"
-        return 1
-    fi
-
-    info "semgrep installed"
+install_uv() {
+    already uv && return
+    # ~/.local/bin is already on PATH via ~/.profile.
+    UV_NO_MODIFY_PATH=1 run_installer https://astral.sh/uv/install.sh sh
 }
 
-install_hcloud_linux() {
-    if command -v hcloud &> /dev/null; then
-        info "hcloud already installed"
-        return
-    fi
-    info "Installing Hetzner Cloud CLI from GitHub releases..."
+# --- Both platforms -----------------------------------------------------------
 
-    # Get the latest version tag from GitHub API
-    HCLOUD_VERSION=$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | jq -r '.tag_name')
-
-    if [ -z "$HCLOUD_VERSION" ] || [ "$HCLOUD_VERSION" = "null" ]; then
-        error "Failed to get latest hcloud version"
-        return 1
-    fi
-
-    info "Downloading hcloud $HCLOUD_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -fL "https://github.com/hetznercloud/cli/releases/download/${HCLOUD_VERSION}/hcloud-linux-amd64.tar.gz" -o /tmp/hcloud.tar.gz
-    tar -xzf /tmp/hcloud.tar.gz -C ~/.local/bin hcloud
-    chmod +x ~/.local/bin/hcloud
-    rm /tmp/hcloud.tar.gz
-
-    info "hcloud installed to ~/.local/bin/hcloud"
+install_foundry() {
+    already forge Foundry && return
+    info "Installing Foundry..."
+    run_installer https://foundry.paradigm.xyz bash
+    "$HOME/.foundry/bin/foundryup"
 }
 
-install_protobuf_linux() {
-    if command -v protoc &> /dev/null; then
-        info "protoc already installed"
-        return
-    fi
-    info "Installing protoc from GitHub releases..."
-
-    # Get the latest version tag from GitHub API
-    PROTOC_VERSION=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest | jq -r '.tag_name')
-
-    if [ -z "$PROTOC_VERSION" ] || [ "$PROTOC_VERSION" = "null" ]; then
-        error "Failed to get latest protoc version"
-        return 1
-    fi
-
-    # Version in filename doesn't have 'v' prefix
-    PROTOC_VERSION_NUM=${PROTOC_VERSION#v}
-
-    info "Downloading protoc $PROTOC_VERSION..."
-    curl -fL "https://github.com/protocolbuffers/protobuf/releases/download/${PROTOC_VERSION}/protoc-${PROTOC_VERSION_NUM}-linux-x86_64.zip" -o /tmp/protoc.zip
-    sudo unzip -o /tmp/protoc.zip -d /usr/local bin/protoc
-    sudo unzip -o /tmp/protoc.zip -d /usr/local 'include/*'
-    rm /tmp/protoc.zip
-
-    info "protoc installed to /usr/local/bin/protoc"
-}
-
-install_java_linux() {
-    if command -v java &> /dev/null; then
-        info "Java already installed"
-        return
-    fi
-    info "Installing Eclipse Temurin (Adoptium) JDK..."
-
-    # Add Adoptium GPG key and repository
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo "$VERSION_CODENAME") main" | sudo tee /etc/apt/sources.list.d/adoptium.list > /dev/null
-
-    sudo apt update
-    sudo apt install -y temurin-21-jdk
-
-    info "Java (Temurin 21) installed"
-}
-
-install_maven_linux() {
-    if command -v mvn &> /dev/null; then
-        info "Maven already installed"
-        return
-    fi
-    info "Installing Maven..."
-    sudo apt install -y maven
-    info "Maven installed"
-}
-
-install_amp() {
-    if command -v amp &> /dev/null; then
-        info "amp already installed"
-        return
-    fi
-    info "Installing Amp Code..."
-
-    # Use official install script (works on macOS, Linux, WSL)
-    curl -fsSL https://ampcode.com/install.sh | bash
-
-    info "Amp Code installed"
-}
-
-install_grok() {
-    if command -v grok &> /dev/null || [ -x "$HOME/.grok/bin/grok" ]; then
-        info "Grok CLI already installed"
-        return
-    fi
-    info "Installing Grok CLI..."
-
-    # Official xAI installer (macOS, Linux, WSL); installs to ~/.grok
-    curl -fsSL https://x.ai/cli/install.sh | bash
-
-    info "Grok CLI installed to ~/.grok/bin"
-}
+install_amp()  { already amp  || run_installer https://ampcode.com/install.sh bash; }
+install_grok() { already grok "Grok CLI" || run_installer https://x.ai/cli/install.sh bash; }
 
 install_opencode() {
-    if command -v opencode &> /dev/null; then
-        info "opencode already installed"
-        return
-    fi
-    info "Installing opencode..."
-
-    # Official installer (works on macOS, Linux, WSL).
-    # --no-modify-path: PATH for ~/.opencode/bin is handled in .bash/init.sh.
-    curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
-
-    info "opencode installed"
+    already opencode && return
+    # PATH for ~/.opencode/bin is handled in .bash/init.sh.
+    run_installer https://opencode.ai/install bash --no-modify-path
 }
 
 install_pi() {
-    if command -v pi &> /dev/null; then
-        info "pi already installed"
-        return
-    fi
+    already pi && return
     info "Installing pi..."
-
-    if ! command -v npm &> /dev/null; then
-        error "Node.js/npm is required to install pi but not found"
-        return 1
-    fi
-
-    # The official pi.dev install script (curl https://pi.dev/install.sh | sh)
-    # prompts on /dev/tty for an install/reinstall menu, so it can't run
-    # unattended. Install the npm package directly with the same flags the
-    # script uses under the hood, which is fully non-interactive on macOS/Linux.
-    # On Linux, target a user-writable global prefix.
-    if [[ "$OS" == "debian" ]]; then
-        mkdir -p ~/.local
-        npm config set prefix ~/.local
-    fi
-    npm install -g --ignore-scripts --min-release-age=0 --no-fund --no-audit @earendil-works/pi-coding-agent
-
-    info "pi installed"
+    # The official pi.dev script prompts on /dev/tty, so it can't run unattended.
+    # Install the npm package with the same flags the script uses.
+    npm_global_install --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent
 }
 
-install_superfile_linux() {
-    if command -v spf &> /dev/null; then
-        info "superfile already installed"
-        return
-    fi
-    info "Installing superfile..."
-
-    # Official installer: https://github.com/yorukot/superfile
-    bash -c "$(curl -sLo- https://superfile.dev/install.sh)"
-
-    info "superfile installed"
-}
-
-install_muse_code_linux() {
-    if command -v muse &> /dev/null; then
-        info "Muse Code already installed"
-        return
-    fi
-    info "Installing Muse Code..."
-
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64) MUSE_ARCH="x86" ;;
-        aarch64|arm64) MUSE_ARCH="aarch64" ;;
-        *)
-            error "Unsupported architecture for Muse Code: $ARCH"
-            return 1
-            ;;
-    esac
-
-    MUSE_VERSION=$(curl -s "https://api.meta.ai/muse-code/channels/muse-stable" | jq -r '.version')
-
-    if [ -z "$MUSE_VERSION" ] || [ "$MUSE_VERSION" = "null" ]; then
-        error "Failed to get latest Muse Code version"
-        return 1
-    fi
-
-    info "Downloading Muse Code $MUSE_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -fL "https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=${MUSE_VERSION}&file=muse-${MUSE_ARCH}-linux" -o ~/.local/bin/muse
-    chmod +x ~/.local/bin/muse
-
-    info "Muse Code installed to ~/.local/bin/muse"
-}
-
-install_flarectl_linux() {
-    if command -v flarectl &> /dev/null; then
-        info "flarectl already installed"
-        return
-    fi
-    info "Installing flarectl from GitHub releases..."
-
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64) FLARECTL_ARCH="amd64" ;;
-        aarch64|arm64) FLARECTL_ARCH="arm64" ;;
-        *)
-            error "Unsupported architecture for flarectl: $ARCH"
-            return 1
-            ;;
-    esac
-
-    # flarectl only ships with the v0.x releases of cloudflare-go; the "latest"
-    # release is a newer major version without it, so pick the highest v0 tag.
-    FLARECTL_VERSION=$(curl -s https://api.github.com/repos/cloudflare/cloudflare-go/git/matching-refs/tags/v0. | jq -r '.[].ref | sub("refs/tags/"; "")' | sort -V | tail -1)
-
-    if [ -z "$FLARECTL_VERSION" ]; then
-        error "Failed to get latest flarectl version"
-        return 1
-    fi
-
-    # Version in filename doesn't have 'v' prefix
-    FLARECTL_VERSION_NUM=${FLARECTL_VERSION#v}
-
-    info "Downloading flarectl $FLARECTL_VERSION..."
-    mkdir -p ~/.local/bin
-    curl -fL "https://github.com/cloudflare/cloudflare-go/releases/download/${FLARECTL_VERSION}/flarectl_${FLARECTL_VERSION_NUM}_linux_${FLARECTL_ARCH}.tar.gz" -o /tmp/flarectl.tar.gz
-    tar -xzf /tmp/flarectl.tar.gz -C ~/.local/bin flarectl
-    chmod +x ~/.local/bin/flarectl
-    rm /tmp/flarectl.tar.gz
-
-    info "flarectl installed to ~/.local/bin/flarectl"
-}
-
-install_wrangler_linux() {
-    if command -v wrangler &> /dev/null; then
-        info "wrangler already installed"
-        return
-    fi
+install_wrangler() {
+    already wrangler && return
     info "Installing wrangler..."
-
-    if ! command -v npm &> /dev/null; then
-        error "Node.js/npm is required to install wrangler but not found"
-        return 1
-    fi
-
-    # Target a user-writable global prefix (same as pi)
-    mkdir -p ~/.local
-    npm config set prefix ~/.local
-    npm install -g --allow-scripts=esbuild,workerd --no-fund --no-audit wrangler
-
-    info "wrangler installed to ~/.local/bin/wrangler"
+    npm_global_install --allow-scripts=esbuild,workerd wrangler
 }
 
-# keepassxcr - latest release from crates.io. cargo skips the build when that
-# version is already installed and upgrades an older one.
+install_worktrunk() {
+    already wt worktrunk && return
+    require_cargo
+    cargo install worktrunk
+}
+
+install_gcalcli() { already gcalcli || uv_tool_install gcalcli; }
+install_semgrep() { already semgrep || uv_tool_install semgrep; }
+
+# keepassxcr (used by envrc-vault / `vault_export` in .envrc): always install the
+# latest crates.io release. cargo skips the build when that version is already
+# installed and upgrades an older one.
 install_keepassxcr() {
-    if ! command -v cargo &> /dev/null; then
+    if ! have cargo; then
         warn "cargo not found, skipping keepassxcr"
         return
     fi
-    local args=(--locked keepassxcr)
-    # An install from the git repo or a local checkout blocks a crates.io install
-    # unless it is replaced with --force.
-    if cargo install --list | grep -q '^keepassxcr .* ('; then
-        args=(--force "${args[@]}")
-    fi
+    local installed
+    installed=$(cargo install --list)
     info "Installing the latest keepassxcr release..."
-    cargo install "${args[@]}"
-}
-
-install_rust() {
-    if ! command -v cargo &> /dev/null; then
-        info "Installing Rust..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        # Source cargo env to make it available in current session
-        source "$HOME/.cargo/env"
+    # A git or local-checkout install blocks a crates.io one unless --force.
+    if grep -q '^keepassxcr .* (' <<<"$installed"; then
+        cargo install --locked --force keepassxcr
+    else
+        cargo install --locked keepassxcr
     fi
 }
 
-# Initialize Neovim plugins if nvim-config exists
-init_neovim_plugins() {
-    if ! command -v nvim &> /dev/null; then
+# Pre-install Neovim plugins once setup.sh has linked the config.
+install_nvim_plugins() {
+    if [ ! -L "$HOME/.config/nvim" ]; then
+        info "Neovim config not linked yet; plugins will install on first launch"
+        return
+    fi
+    if ! have nvim; then
         warn "Neovim not found, skipping plugin installation"
         return
     fi
-
-    # Check if nvim-config directory exists (relative to script location)
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ ! -d "$SCRIPT_DIR/nvim-config" ]; then
-        warn "nvim-config directory not found, skipping plugin installation"
-        return
-    fi
-
-    info "Initializing Neovim plugins..."
-
-    # Neovim plugin installation happens automatically on first launch
-    # We'll do a headless sync to pre-install plugins
+    info "Installing Neovim plugins..."
+    # The first start bootstraps lazy.nvim; the second syncs every plugin.
     nvim --headless +qa 2>/dev/null || true
-    sleep 2
-    nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
-
-    info "Neovim plugins initialized"
+    nvim --headless "+Lazy! sync" +qa 2>/dev/null || warn "Neovim plugin sync reported errors"
 }
 
-# Main
+# --- Main ---------------------------------------------------------------------
+
+FAILED=()
+
+# run_step NAME: run install_NAME in a subshell with errexit on, and record a
+# failure instead of stopping. (`install_NAME || ...` would turn errexit off
+# inside the function, so a failing command partway through would go unnoticed.)
+run_step() {
+    local rc
+    set +e
+    (
+        set -e
+        "install_$1"
+    )
+    rc=$?
+    set -e
+    if [ "$rc" -eq 0 ]; then return; fi
+    case " ${OPTIONAL_STEPS[*]} " in
+        *" $1 "*)
+            warn "Optional step '$1' failed (exit $rc); continuing"
+            return
+            ;;
+    esac
+    error "Step '$1' failed (exit $rc)"
+    # Everything after this needs curl, jq and a compiler.
+    if [ "$1" = apt_packages ]; then die "Base packages failed to install; stopping"; fi
+    FAILED+=("$1")
+}
+
+usage() {
+    sed -n '3,11s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
+}
+
 main() {
-    info "Starting dependency installation..."
+    local steps step
+    case "$OS" in
+        macos) steps=("${MACOS_STEPS[@]}") ;;
+        debian) steps=("${DEBIAN_STEPS[@]}") ;;
+        *) die "Unsupported OS. Please install packages manually." ;;
+    esac
 
-    # Install Rust/Cargo first (needed for some tools)
-    install_rust
+    case "${1:-}" in
+        -h | --help) usage; return ;;
+        --list) printf '%s\n' "${steps[@]}"; return ;;
+    esac
 
-    install_packages
-
-    # Initialize Neovim plugins if setup has been run
-    # This allows the install script to work standalone or after setup.sh
-    if [ -d "$HOME/.config/nvim" ] && [ -L "$HOME/.config/nvim" ]; then
-        info "Detected Neovim configuration, initializing plugins..."
-        init_neovim_plugins
+    if [ $# -eq 0 ]; then
+        set -- "${steps[@]}"
+    else
+        for step in "$@"; do
+            case " ${steps[*]} " in
+                *" $step "*) ;;
+                *) die "Unknown step '$step' for $OS (see ./install.sh --list)" ;;
+            esac
+        done
     fi
 
+    info "Installing for $OS${DISTRO_ID:+ ($DISTRO_ID $CODENAME)}"
+    if [ "$OS" = macos ]; then setup_homebrew; fi
+
+    for step in "$@"; do
+        run_step "$step"
+    done
+
+    if [ "${#FAILED[@]}" -gt 0 ]; then
+        error "${#FAILED[@]} step(s) failed: ${FAILED[*]}"
+        error "Re-run them with: $SCRIPT_DIR/install.sh ${FAILED[*]}"
+        exit 1
+    fi
     info "Done! Now run ./setup.sh to create symlinks."
 }
 
-main "$@"
+# Run only when executed, so tests can source this file.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi

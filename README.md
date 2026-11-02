@@ -30,6 +30,18 @@ tools on either, falling back to GitHub releases or official install scripts for
 anything the package manager ships too old. It is idempotent -- re-run it to pick
 up newly added tools.
 
+Each tool is a separate step. If one fails (a flaky download, a GitHub rate
+limit), the rest still install and the script ends by listing the failed steps
+and the command to retry just those:
+
+```bash
+./install.sh --list      # step names for this OS
+./install.sh fzf jj      # run only these steps
+```
+
+Set `GITHUB_TOKEN` to avoid GitHub's anonymous API rate limit when installing on
+Linux.
+
 ## Remote access
 
 Plain `ssh` is configured in `config/ssh/config` (symlinked to `~/.ssh/config`),
