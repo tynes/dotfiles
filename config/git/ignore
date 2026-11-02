@@ -10,3 +10,7 @@
 
 # direnv's per-project cache (layout python, use nix, ...)
 .direnv/
+
+# Claude Code's per-user project settings (Claude Code adds this line to the
+# global ignore itself; keeping it here stops it rewriting this tracked file).
+**/.claude/settings.local.json
