@@ -678,8 +678,15 @@ install_keepassxcr() {
 # Language servers (nvim-config/lsp/) and the tree-sitter CLI for Neovim.
 # Installed here rather than by a Neovim plugin (Mason), so the release
 # cooldowns in .npmrc and uv.toml apply. On macOS Homebrew installs all but
-# the Solidity server (see BREW_PACKAGES).
+# the Solidity server (see BREW_PACKAGES). rust-analyzer comes from rustup.
 install_nvim_tools() {
+    if have rustup; then
+        info "Adding rust-analyzer via rustup..."
+        rustup component add rust-analyzer
+    else
+        warn "rustup not found, skipping rust-analyzer"
+    fi
+
     local pkgs=()
     have nomicfoundation-solidity-language-server || pkgs+=(@nomicfoundation/solidity-language-server)
     if [ "$OS" = debian ]; then
