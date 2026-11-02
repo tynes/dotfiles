@@ -55,6 +55,10 @@ DEBIAN_STEPS=(
     nvim_plugins
 )
 
+# Steps that only warn when they fail, so the run can still succeed.
+#   ghostty: debian.griffo.io's apt mirror now needs a paid subscription.
+OPTIONAL_STEPS=(ghostty)
+
 # --- Output -------------------------------------------------------------------
 
 info()  { printf '\033[0;32m[INFO]\033[0m %s\n' "$*"; }
@@ -476,8 +480,9 @@ install_gcloud() {
 install_ghostty() {
     already ghostty && return
     info "Installing Ghostty from debian.griffo.io..."
-    # debian.griffo.io only publishes a bookworm suite, and its apt mirror now
-    # needs a paid subscription; without one this step fails (cleanly).
+    info "(Its apt mirror needs a subscription. Other options: https://ghostty.org/docs/install/binary)"
+    # debian.griffo.io only publishes a bookworm suite. This is an optional
+    # step (see OPTIONAL_STEPS), so failing here doesn't fail the run.
     apt_repo_install debian.griffo.io https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc \
         "deb [signed-by={keyring}] https://debian.griffo.io/apt bookworm main" \
         ghostty
@@ -657,6 +662,12 @@ run_step() {
     rc=$?
     set -e
     if [ "$rc" -eq 0 ]; then return; fi
+    case " ${OPTIONAL_STEPS[*]} " in
+        *" $1 "*)
+            warn "Optional step '$1' failed (exit $rc); continuing"
+            return
+            ;;
+    esac
     error "Step '$1' failed (exit $rc)"
     # Everything after this needs curl, jq and a compiler.
     if [ "$1" = apt_packages ]; then die "Base packages failed to install; stopping"; fi
