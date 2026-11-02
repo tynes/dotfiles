@@ -293,15 +293,19 @@ if command -v wt &> /dev/null; then
     eval "$(wt config shell init bash)"
 fi
 
+# Vendor install directories go at the END of PATH. Their installers update
+# themselves and can write anything there; at the front, a `git`, `ssh` or `gpg`
+# dropped into one of them would win over the real one.
+
 # Grok CLI (installs to ~/.grok via https://x.ai/cli/install.sh)
 if [ -d "$HOME/.grok/bin" ]; then
-    export PATH="$HOME/.grok/bin:$PATH"
+    export PATH="$PATH:$HOME/.grok/bin"
     [ -r "$HOME/.grok/completions/bash/grok.bash" ] && source "$HOME/.grok/completions/bash/grok.bash"
 fi
 
 # opencode (installs to ~/.opencode via https://opencode.ai/install)
 if [ -d "$HOME/.opencode/bin" ]; then
-    export PATH="$HOME/.opencode/bin:$PATH"
+    export PATH="$PATH:$HOME/.opencode/bin"
 fi
 
 # =============================================================================
