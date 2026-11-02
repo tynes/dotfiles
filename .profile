@@ -76,6 +76,14 @@ if [ -d "$HOME/.local/bin" ]; then
     PATH="$PATH:$HOME/.local/bin"
 fi
 
+# Linux: global npm installs (pi, wrangler) live under ~/.local, so later
+# `npm install -g` / `npm update -g` find them without sudo. Set here rather
+# than with `npm config set prefix`, which would write into ~/.npmrc -- a
+# symlink to the tracked .npmrc in this repo.
+if [ "$(uname)" = "Linux" ]; then
+    export NPM_CONFIG_PREFIX="$HOME/.local"
+fi
+
 # ssh-agent: one shared agent per machine, at a fixed socket path.
 #
 # This used to be `[ -z "$SSH_AUTH_SOCK" ] && eval "$(ssh-agent -s)"`, which

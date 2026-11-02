@@ -27,6 +27,8 @@ BREW_PACKAGES=(
     ghostty antigravity-cli gnupg orbstack openssh mosh starship worktrunk
     rclone gcalcli wget semgrep hcloud protobuf openjdk@21 maven php fswatch
     superfile muse-code flarectl cloudflare-wrangler coreutils
+    # Neovim: language servers (nvim-config/lsp/) and the tree-sitter CLI
+    tree-sitter-cli lua-language-server pyright ruff typescript-language-server
 )
 
 APT_PACKAGES=(
@@ -42,7 +44,7 @@ APT_PACKAGES=(
 MACOS_STEPS=(
     rust brew_packages python_symlink
     foundry amp grok opencode pi keepassxcr
-    nvim_plugins
+    nvim_tools nvim_plugins
 )
 
 DEBIAN_STEPS=(
@@ -52,7 +54,7 @@ DEBIAN_STEPS=(
     tailscale ghostty docker starship worktrunk rclone gcalcli semgrep hcloud
     protobuf java maven amp grok opencode pi superfile muse flarectl wrangler
     keepassxcr
-    nvim_plugins
+    nvim_tools nvim_plugins
 )
 
 # Steps that only warn when they fail, so the run can still succeed.
@@ -97,10 +99,18 @@ esac
 # earlier steps installed, and vendor scripts that only edit ~/.bashrc when
 # their directory is missing from PATH leave it alone (it's a repo symlink).
 for dir in "$HOME/.local/bin" "$HOME/.cargo/bin" /usr/local/go/bin \
-    "$HOME/.bun/bin" "$HOME/.foundry/bin" "$HOME/.grok/bin" "$HOME/.opencode/bin"; do
+    "$HOME/.bun/bin" "$HOME/.foundry/bin"; do
     case ":$PATH:" in
         *":$dir:"*) ;;
         *) PATH="$dir:$PATH" ;;
+    esac
+done
+# Self-updating vendor directories go last, as in .bash/init.sh, so a `git`
+# or `curl` dropped into one can't shadow the real one for later steps.
+for dir in "$HOME/.grok/bin" "$HOME/.opencode/bin"; do
+    case ":$PATH:" in
+        *":$dir:"*) ;;
+        *) PATH="$PATH:$dir" ;;
     esac
 done
 export PATH
@@ -210,12 +220,34 @@ install_github_bin() {
 
 apt_install() { sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"; }
 
+# apt_key_fpr NAME: the fingerprint NAME's apt key must have, for third-party
+# repos whose key is checked before it's trusted. Empty for the others.
+apt_key_fpr() {
+    case "$1" in
+        debian.griffo.io) echo EA0F721D231FDD3A0A17B9AC7808B4DD62C41256 ;;
+    esac
+}
+
+# check_key_fpr FILE FPR: FILE must hold exactly one primary key, and it must
+# have fingerprint FPR.
+check_key_fpr() {
+    local got
+    got=$(gpg --show-keys --with-colons "$1" 2>/dev/null |
+        awk -F: '$1 == "pub" { want = 1 } $1 == "fpr" && want { print $10; want = 0 }')
+    if [ "$got" != "$2" ]; then
+        error "apt key fingerprint mismatch (expected $2, got: ${got:-none})"
+        return 1
+    fi
+}
+
 # add_apt_repo NAME KEY_URL SOURCE: add an apt repository signed by the key at
 # KEY_URL. SOURCE is the "deb ..." line; {keyring} becomes the key's path.
 add_apt_repo() {
-    local name=$1 key_url=$2 source=$3 keyring="/etc/apt/keyrings/$1.gpg" key
+    local name=$1 key_url=$2 source=$3 keyring="/etc/apt/keyrings/$1.gpg" key fpr
     key="$(step_tmp)/key"
     fetch "$key_url" "$key"
+    fpr=$(apt_key_fpr "$name")
+    if [ -n "$fpr" ]; then check_key_fpr "$key" "$fpr"; fi
     sudo install -m 0755 -d /etc/apt/keyrings
     if grep -q -- '-----BEGIN PGP' "$key"; then
         sudo gpg --dearmor --yes -o "$keyring" "$key"
@@ -381,7 +413,7 @@ install_flarectl() {
 
 install_neovim() {
     already nvim neovim && return
-    # apt's neovim is usually too old for AstroNvim.
+    # apt's neovim is too old: the config needs 0.12+ (vim.pack).
     info "Installing neovim from GitHub releases..."
     local tarball
     tarball="$(step_tmp)/nvim.tar.gz"
@@ -478,12 +510,25 @@ install_gcloud() {
 }
 
 install_ghostty() {
+    # Older versions of this script put debian.griffo.io's key in trusted.gpg.d,
+    # where apt trusts it to sign packages for every repo. Remove it, along
+    # with the repo entry that relied on it. If Ghostty is already installed
+    # it stays, but no longer gets updates from that repo; to re-add the repo
+    # with a scoped key, uninstall Ghostty and run this step again.
+    if [ -e /etc/apt/trusted.gpg.d/debian.griffo.io.gpg ]; then
+        warn "Removing the globally trusted debian.griffo.io apt key"
+        sudo rm -f /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
+        if ! grep -qs 'signed-by=' /etc/apt/sources.list.d/debian.griffo.io.list; then
+            sudo rm -f /etc/apt/sources.list.d/debian.griffo.io.list
+        fi
+    fi
     already ghostty && return
     info "Installing Ghostty from debian.griffo.io..."
     info "(Its apt mirror needs a subscription. Other options: https://ghostty.org/docs/install/binary)"
     # debian.griffo.io only publishes a bookworm suite. This is an optional
-    # step (see OPTIONAL_STEPS), so failing here doesn't fail the run.
-    apt_repo_install debian.griffo.io https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc \
+    # step (see OPTIONAL_STEPS), so failing here doesn't fail the run. The key
+    # is checked against apt_key_fpr before it's trusted.
+    apt_repo_install debian.griffo.io "https://debian.griffo.io/$(apt_key_fpr debian.griffo.io).asc" \
         "deb [signed-by={keyring}] https://debian.griffo.io/apt bookworm main" \
         ghostty
 }
@@ -591,8 +636,9 @@ install_pi() {
     already pi && return
     info "Installing pi..."
     # The official pi.dev script prompts on /dev/tty, so it can't run unattended.
-    # Install the npm package with the same flags the script uses.
-    npm_global_install --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent
+    # Install the npm package instead. The 7-day min-release-age in .npmrc
+    # applies, like every other npm install (pi's script turns it off).
+    npm_global_install --ignore-scripts @earendil-works/pi-coding-agent
 }
 
 install_wrangler() {
@@ -629,6 +675,62 @@ install_keepassxcr() {
     fi
 }
 
+# Language servers (nvim-config/lsp/) and the tree-sitter CLI for Neovim.
+# Installed here rather than by a Neovim plugin (Mason), so the release
+# cooldowns in .npmrc and uv.toml apply. On macOS Homebrew installs all but
+# the Solidity server (see BREW_PACKAGES).
+install_nvim_tools() {
+    local pkgs=()
+    have nomicfoundation-solidity-language-server || pkgs+=(@nomicfoundation/solidity-language-server)
+    if [ "$OS" = debian ]; then
+        have pyright-langserver || pkgs+=(pyright)
+        have typescript-language-server || pkgs+=(typescript-language-server typescript)
+    fi
+    if [ "${#pkgs[@]}" -gt 0 ]; then
+        info "Installing ${pkgs[*]} via npm..."
+        npm_global_install "${pkgs[@]}"
+    else
+        info "npm language servers already installed"
+    fi
+
+    [ "$OS" = debian ] || return 0
+    already ruff || uv_tool_install ruff
+    # nvim-treesitter needs the tree-sitter CLI to build parsers, and says to
+    # get it from a package manager rather than npm.
+    if ! already tree-sitter tree-sitter-cli; then
+        require_cargo
+        cargo install --locked tree-sitter-cli
+    fi
+    install_lua_language_server
+}
+
+# lua-language-server for Linux: the newest release at least 7 days old,
+# matching the npm/uv cooldowns.
+install_lua_language_server() {
+    already lua-language-server && return
+    local arch cutoff tag dir tarball
+    case "$(uname -m)" in
+        x86_64) arch=x64 ;;
+        aarch64 | arm64) arch=arm64 ;;
+        *) die "Unsupported architecture for lua-language-server: $(uname -m)" ;;
+    esac
+    cutoff=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+    tag=$(github_api "repos/LuaLS/lua-language-server/releases?per_page=30" |
+        jq -r --arg cutoff "$cutoff" \
+            '[.[] | select((.prerelease | not) and .published_at < $cutoff)][0].tag_name // empty')
+    [ -n "$tag" ] || die "Could not find a lua-language-server release"
+    info "Installing lua-language-server $tag..."
+    dir="$HOME/.local/share/lua-language-server"
+    tarball="$(step_tmp)/lua-ls.tar.gz"
+    fetch "https://github.com/LuaLS/lua-language-server/releases/download/$tag/lua-language-server-$tag-linux-$arch.tar.gz" "$tarball"
+    rm -rf "$dir"
+    mkdir -p "$dir" "$BIN_DIR"
+    tar -xzf "$tarball" -C "$dir"
+    # It finds its scripts relative to its own path, so wrap it, don't symlink.
+    printf '#!/bin/sh\nexec "%s/bin/lua-language-server" "$@"\n' "$dir" >"$BIN_DIR/lua-language-server"
+    chmod 0755 "$BIN_DIR/lua-language-server"
+}
+
 # Pre-install Neovim plugins once setup.sh has linked the config.
 install_nvim_plugins() {
     if [ ! -L "$HOME/.config/nvim" ]; then
@@ -640,9 +742,12 @@ install_nvim_plugins() {
         return
     fi
     info "Installing Neovim plugins..."
-    # The first start bootstraps lazy.nvim; the second syncs every plugin.
-    nvim --headless +qa 2>/dev/null || true
-    nvim --headless "+Lazy! sync" +qa 2>/dev/null || warn "Neovim plugin sync reported errors"
+    # The first start installs plugins at the revisions pinned in
+    # nvim-config/nvim-pack-lock.json (vim.pack). The second builds the
+    # treesitter parsers listed in nvim-config/lua/config/treesitter.lua.
+    nvim --headless +qa || warn "Neovim plugin install reported errors"
+    nvim --headless "+lua require('config.treesitter').install(true)" +qa ||
+        warn "Treesitter parser install reported errors"
 }
 
 # --- Main ---------------------------------------------------------------------
