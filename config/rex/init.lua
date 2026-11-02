@@ -57,5 +57,24 @@ rex.bind(p("alt+l"), "pane.resize", { direction = "right", amount = 1 })
 rex.bind("shift+left", "client.tab.previous")
 rex.bind("shift+right", "client.tab.next")
 
+-- These match tmux's built-in defaults rather than lines in .tmux.conf.
+
+-- New tab. tmux: prefix + c (new-window)
+rex.bind(p("c"), "client.tab.new")
+
+-- Close the focused pane. tmux: prefix + x (kill-pane)
+-- Unlike tmux, Rex closes it right away without asking first.
+rex.bind(p("x"), "pane.close")
+
+-- Go to tab 1-9. tmux: prefix + 1-9 (select-window)
+-- Tabs count from 1 here, matching base-index 1 in .tmux.conf.
+for i = 1, 9 do
+  rex.bind(p(tostring(i)), "client.tab.goto", { index = i })
+end
+
+-- Session picker. tmux: prefix + w (choose-tree)
+-- Rex has no tab picker, so this lists sessions, not tabs.
+rex.bind(p("w"), "session.switch")
+
 -- Reload config. tmux: bind r source-file ~/.tmux.conf
 rex.bind(p("r"), "client.config.reload")

@@ -177,7 +177,9 @@ end a committed `.envrc` with `source_env_if_exists .envrc.local`.
 `.tmux.conf`: `ctrl+b` then `v`/`s` to split, `h`/`j`/`k`/`l` to move (or
 `alt+h`/`j`/`k`/`l` and `alt+arrows` with no prefix), `shift+h`/`j`/`k`/`l` and
 `alt+h`/`j`/`k`/`l` after the prefix to resize, and `shift+left`/`right` for tabs.
-Press `ctrl+b` twice to send it to the terminal. Rex only reads the file on
+It also has tmux's built-in keys after the prefix: `c` for a new tab, `x` to close
+the pane (no confirmation), `1`-`9` to go to a tab, and `w` for the session
+picker (Rex has no tab picker). Press `ctrl+b` twice to send it to the terminal. Rex only reads the file on
 `rex config reload` (or `ctrl+b` then `r`).
 
 ## Compatibility
