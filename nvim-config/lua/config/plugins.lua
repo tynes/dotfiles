@@ -13,6 +13,11 @@ vim.pack.add({
   { src = gh "nvim-treesitter/nvim-treesitter", version = "main" },
   gh "lewis6991/gitsigns.nvim",
   gh "ibhagwan/fzf-lua",
+  -- neo-tree side panel and its dependencies
+  gh "nvim-lua/plenary.nvim",
+  gh "MunifTanjim/nui.nvim",
+  gh "nvim-tree/nvim-web-devicons",
+  { src = gh "nvim-neo-tree/neo-tree.nvim", version = "v3.x" },
 }, {
   -- Ask before installing anything new; skip the prompt in headless runs
   -- (install.sh), where the lockfile decides.
@@ -55,3 +60,32 @@ map("<Leader>f<CR>", fzf.resume, "Resume last search")
 map("<Leader>gt", fzf.git_status, "Git status")
 map("<Leader>lD", fzf.diagnostics_workspace, "Search diagnostics")
 map("<Leader>lS", fzf.lsp_document_symbols, "Document symbols")
+
+-- Side panel (the one AstroNvim had): files, open buffers, git status.
+require("neo-tree").setup {
+  close_if_last_window = true,
+  sources = { "filesystem", "buffers", "git_status" },
+  source_selector = { winbar = true }, -- tabs across the top of the panel
+  window = {
+    width = 30,
+    mappings = {
+      ["<Space>"] = "none", -- leave <Space> as leader inside the panel
+      ["[b"] = "prev_source",
+      ["]b"] = "next_source",
+    },
+  },
+  filesystem = {
+    follow_current_file = { enabled = true },
+    use_libuv_file_watcher = true,
+    hijack_netrw_behavior = "open_current",
+  },
+  buffers = { follow_current_file = { enabled = true } },
+}
+map("<Leader>e", "<Cmd>Neotree toggle<CR>", "Toggle side panel")
+map("<Leader>o", function()
+  if vim.bo.filetype == "neo-tree" then
+    vim.cmd.wincmd "p"
+  else
+    vim.cmd.Neotree "focus"
+  end
+end, "Focus side panel")
