@@ -244,7 +244,7 @@ class Index:
         for p, mtime, _ in files:
             info = self.cache.get(p) or {}
             cwd = info.get("cwd")
-            if not cwd or cwd.startswith(SKIP_CWD_PREFIXES):
+            if not cwd or (cwd + "/").startswith(SKIP_CWD_PREFIXES):
                 continue
             title = info.get("title") or info.get("prompt")
             if not title:
@@ -573,17 +573,25 @@ class Sidebar:
                        % (short_path(cwd), " ".join(resume_argv(row, fork))))
             return
         if replace and self.main_block and self.own_block:
+            # Keep the sidebar's width: read its split before the close.
+            ratio = self.split_ratio()
             rex("block", "close", "-s", self.rex_session, self.main_block)
             ok, out = rex("split", "-s", self.rex_session, "-b", self.own_block,
-                          "--split=right", "--ratio", "78", "-c", cwd, "--json",
+                          "--split=right", "-c", cwd, "--json",
                           "--", *resume_argv(row, fork))
-            if ok:
-                try:
-                    self.main_block = json.loads(out)["block_ids"][0]
-                except (ValueError, KeyError, IndexError):
-                    pass
-            else:
+            if not ok:
                 self.flash(clip(out, 60))
+                return
+            try:
+                self.main_block = json.loads(out)["block_ids"][0]
+            except (ValueError, KeyError, IndexError):
+                return
+            if ratio:
+                # rex split ignores --ratio here (Rex Beta 0.1.0); set the border.
+                rex("api", "call", "-s", self.rex_session, "session.resize_pane", json.dumps({
+                    "session_id": self.rex_session, "direction": "horizontal",
+                    "before_block_id": self.own_block, "after_block_id": self.main_block,
+                    "ratio": ratio}))
             return
         ok, out = rex("window", "new", "-s", self.rex_session, tab_label(row),
                       "-c", cwd, "--json", "--", *resume_argv(row, fork))
@@ -591,6 +599,30 @@ class Sidebar:
             self.flash(clip(out, 60))
         else:
             self.flash("Forked into a new tab" if fork else "Resumed in a new tab")
+
+    def split_ratio(self):
+        """The ratio of the split with this sidebar on its left, or None."""
+        ok, out = rex("api", "call", "-s", self.rex_session, "session.view", "{}")
+        if not ok:
+            return None
+        def walk(node):
+            if not isinstance(node, dict):
+                return None
+            split = node.get("split")
+            if isinstance(split, dict):
+                if (split.get("before") or {}).get("block_id") == self.own_block:
+                    return split.get("ratio")
+                return walk(split.get("before")) or walk(split.get("after"))
+            return None
+        try:
+            for win in json.loads(out).get("windows", []):
+                for layer in win.get("layers", []):
+                    r = walk(layer.get("layout"))
+                    if r:
+                        return r
+        except (ValueError, AttributeError):
+            pass
+        return None
 
     def ask(self, prompt, fn):
         self.confirm = (prompt, fn)
