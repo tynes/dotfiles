@@ -25,8 +25,8 @@ BREW_PACKAGES=(
     ripgrep fd tree go node pnpm bun python@3 uv gh jj jq just bitwarden-cli
     gcloud-cli awscli claude-code@latest codex nvimpager moor watch tailscale
     ghostty antigravity-cli gnupg orbstack openssh mosh starship worktrunk
-    rclone gcalcli wget semgrep hcloud protobuf openjdk@21 maven php fswatch
-    superfile muse-code flarectl cloudflare-wrangler coreutils
+    rclone wget hcloud protobuf php fswatch
+    superfile muse-code cloudflare-wrangler coreutils tor
     # Neovim: language servers (nvim-config/lsp/) and the tree-sitter CLI
     tree-sitter-cli lua-language-server pyright ruff typescript-language-server
 )
@@ -35,7 +35,7 @@ APT_PACKAGES=(
     git tig tmux htop direnv ripgrep fd-find tree curl unzip ca-certificates
     python3 python3-pip python3-venv python-is-python3 build-essential scdoc
     jq procps gnupg openssh-client openssh-server mosh openssl libssl-dev
-    pkg-config wget php php-cli php-common bat
+    pkg-config wget php php-cli php-common bat tor
 )
 
 # --- Steps --------------------------------------------------------------------
@@ -51,8 +51,8 @@ DEBIAN_STEPS=(
     apt_packages rust
     neovim eza fzf zoxide difftastic delta go node pnpm bun uv foundry gh jj
     just bitwarden gcloud awscli claude codex antigravity nvimpager moor
-    tailscale ghostty docker starship worktrunk rclone gcalcli semgrep hcloud
-    protobuf java maven amp grok opencode pi superfile muse flarectl wrangler
+    tailscale ghostty docker starship worktrunk rclone hcloud
+    protobuf amp grok opencode pi superfile muse wrangler
     keepassxcr
     nvim_tools nvim_plugins
 )
@@ -398,19 +398,6 @@ install_bitwarden() {
     install_release_asset "https://github.com/bitwarden/clients/releases/download/$tag/bw-linux-${tag#cli-v}.zip" bw
 }
 
-install_flarectl() {
-    already flarectl && return
-    [ "$GOARCH" != unknown ] || die "Unsupported architecture for flarectl: $(uname -m)"
-    # flarectl only ships with the v0.x releases of cloudflare-go; "latest" is a
-    # newer major version without it, so pick the highest v0 tag.
-    local tag
-    tag=$(github_api repos/cloudflare/cloudflare-go/git/matching-refs/tags/v0. |
-        jq -r '.[].ref | sub("refs/tags/"; "")' | sort -V | tail -n 1)
-    [ -n "$tag" ] || die "Could not find the latest flarectl release"
-    info "Installing flarectl $tag..."
-    install_release_asset "https://github.com/cloudflare/cloudflare-go/releases/download/$tag/flarectl_${tag#v}_linux_$GOARCH.tar.gz" flarectl
-}
-
 install_neovim() {
     already nvim neovim && return
     # apt's neovim is too old: the config needs 0.12+ (vim.pack).
@@ -533,19 +520,6 @@ install_ghostty() {
         ghostty
 }
 
-install_java() {
-    already java Java && return
-    info "Installing Eclipse Temurin 21 JDK..."
-    apt_repo_install adoptium https://packages.adoptium.net/artifactory/api/gpg/key/public \
-        "deb [signed-by={keyring}] https://packages.adoptium.net/artifactory/deb $CODENAME main" \
-        temurin-21-jdk
-}
-
-install_maven() {
-    already mvn Maven && return
-    apt_install maven
-}
-
 install_docker() {
     if ! already docker Docker; then
         info "Installing Docker..."
@@ -653,8 +627,6 @@ install_worktrunk() {
     cargo install worktrunk
 }
 
-install_gcalcli() { already gcalcli || uv_tool_install gcalcli; }
-install_semgrep() { already semgrep || uv_tool_install semgrep; }
 
 # keepassxcr (used by envrc-vault / `vault_export` in .envrc): always install the
 # latest crates.io release. cargo skips the build when that version is already
