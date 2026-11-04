@@ -42,6 +42,10 @@ LIVE = os.path.join(CACHE, "live")
 
 MAX_SESSIONS = 300
 REFRESH_SECONDS = 2.0
+# The mouse wheel. macOS's Python curses has no BUTTON5_PRESSED: wheel-down
+# comes through as REPORT_MOUSE_POSITION, or button 5 on newer builds.
+WHEEL_DOWN = getattr(curses, "BUTTON5_PRESSED", 0) | curses.REPORT_MOUSE_POSITION
+WHEEL_ROWS = 3
 SKIP_CWD_PREFIXES = ("/private/tmp/", "/tmp/", "/private/var/folders/")
 
 # A JSON string body: anything but a quote or backslash, or an escape.
@@ -1001,8 +1005,8 @@ class Sidebar:
             _, x, y, _, bstate = curses.getmouse()
         except curses.error:
             return
-        up = bstate & getattr(curses, "BUTTON4_PRESSED", 0)
-        down = bstate & getattr(curses, "BUTTON5_PRESSED", 0)
+        up = bstate & curses.BUTTON4_PRESSED
+        down = bstate & WHEEL_DOWN
         left = bstate & (curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED)
         right = bstate & (curses.BUTTON3_PRESSED | curses.BUTTON3_CLICKED)
         if self.menu:
@@ -1020,10 +1024,10 @@ class Sidebar:
                     self.menu = None  # a click outside closes it
             return
         if up:
-            self.move(-1)
+            self.move(-WHEEL_ROWS)
             return
         if down:
-            self.move(1)
+            self.move(WHEEL_ROWS)
             return
         sid = self.hit_map.get(y)
         if not sid:
