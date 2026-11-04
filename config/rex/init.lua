@@ -78,3 +78,25 @@ rex.bind(p("w"), "session.switch")
 
 -- Reload config. tmux: bind r source-file ~/.tmux.conf
 rex.bind(p("r"), "client.config.reload")
+
+-- Claude sessions sidebar: a list of past and running Claude Code sessions
+-- on the left, like the desktop app. Press again to close it.
+-- See bin/claude-sidebar and bin/claude-sessions.
+rex.action{
+  name = "claude_sidebar",
+  title = "Toggle Claude Sessions",
+  description = "Show or hide the Claude Code sessions sidebar beside this pane.",
+  keywords = "claude sessions history sidebar resume",
+  run = function(ctx)
+    if not ctx.session_id or not ctx.block_id then
+      error("no focused pane", 0)
+    end
+    local r, err = rex.exec({
+      os.getenv("HOME") .. "/bin/claude-sidebar", "toggle",
+      ctx.session_id, ctx.block_id, ctx.client_id or "",
+    }, { timeout = 15 })
+    if r == nil then error(err, 0) end
+    if not r.ok then error(r.stderr, 0) end
+  end,
+}
+rex.bind(p("e"), "claude_sidebar")

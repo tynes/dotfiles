@@ -1,0 +1,48 @@
+{
+  "model": "opus",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'rex __internal session-start --agent claude 2>/dev/null || true'",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "/bin/sh -c '\"$HOME/bin/claude-sidebar\" register 2>/dev/null || true'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "html-to-markdown": {
+      "source": {
+        "source": "github",
+        "repo": "xberg-io/html-to-markdown"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "medium"
+    }
+  },
+  "advisorModel": "opus",
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "crossSessionInbound": "accept",
+  "agentPushNotifEnabled": true,
+  "voiceEnabled": true
+}

@@ -1,0 +1,981 @@
+#!/usr/bin/env python3
+"""A sidebar of Claude Code sessions, meant for a narrow Rex pane.
+
+Lists past and running sessions grouped by date (like the Claude desktop
+app). Enter opens one: it jumps to the pane where it is already running, or
+resumes it in a new Rex tab. Usually started by `claude-sidebar toggle`.
+
+Reads, never writes, Claude's files:
+  ~/.claude/projects/*/*.jsonl   transcripts (titles, cwd, search)
+  ~/.claude/sessions/*.json      running sessions and their status
+Keeps its own state in ~/.cache/claude-sidebar/:
+  index-v2.json per-transcript cache, keyed by mtime and size
+  state.json   archived and pinned session ids
+  live/*.json  which Rex pane each running session is in (claude-sidebar register)
+
+Keys: j/k move, Enter open, / search (Enter in it searches message text too),
+a archive, A show archived, * pin, f fork, o open in the main pane,
+. this project only, p group by project, r refresh, q quit.
+"""
+
+import argparse
+import curses
+import json
+import locale
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from datetime import datetime, timedelta
+
+HOME = os.path.expanduser("~")
+CLAUDE = os.path.join(HOME, ".claude")
+PROJECTS = os.path.join(CLAUDE, "projects")
+SESSIONS = os.path.join(CLAUDE, "sessions")
+CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.join(HOME, ".cache")), "claude-sidebar")
+INDEX = os.path.join(CACHE, "index-v2.json")
+STATE = os.path.join(CACHE, "state.json")
+LIVE = os.path.join(CACHE, "live")
+
+MAX_SESSIONS = 300
+REFRESH_SECONDS = 2.0
+SKIP_CWD_PREFIXES = ("/private/tmp/", "/tmp/", "/private/var/folders/")
+
+# A JSON string body: anything but a quote or backslash, or an escape.
+JSTR = r'"(?:[^"\\]|\\.)*"'
+
+
+# --- Small helpers -------------------------------------------------------------
+
+def read_json(path, default):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def write_json(path, value):
+    """Write atomically, so two sidebars never see half a file."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = "%s.%d.tmp" % (path, os.getpid())
+    with open(tmp, "w") as f:
+        json.dump(value, f)
+    os.replace(tmp, path)
+
+
+def pid_alive(pid):
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def rg_available():
+    return shutil.which("rg") is not None
+
+
+def age(ts):
+    s = max(0, time.time() - ts)
+    if s < 60:
+        return "now"
+    if s < 3600:
+        return "%dm ago" % (s // 60)
+    if s < 86400:
+        return "%dh ago" % (s // 3600)
+    if s < 86400 * 30:
+        return "%dd ago" % (s // 86400)
+    return datetime.fromtimestamp(ts).strftime("%b %d")
+
+
+def date_group(ts):
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.fromtimestamp(ts)
+    if d >= today:
+        return "Today"
+    if d >= today - timedelta(days=1):
+        return "Yesterday"
+    if d >= today - timedelta(days=7):
+        return "Previous 7 days"
+    if d >= today - timedelta(days=30):
+        return "Previous 30 days"
+    return "Older"
+
+
+def short_path(path):
+    if path.startswith(HOME):
+        return "~" + path[len(HOME):]
+    return path
+
+
+def clip(text, width):
+    """Cut text to a display width, ending in an ellipsis when cut."""
+    text = " ".join(str(text).split())
+    if width <= 0:
+        return ""
+    if len(text) <= width:
+        return text
+    return text[: max(0, width - 1)] + "…"
+
+
+# --- Index of transcripts ------------------------------------------------------
+
+def transcript_files():
+    """(path, mtime, size) for the newest top-level transcripts."""
+    out = []
+    try:
+        projects = os.listdir(PROJECTS)
+    except OSError:
+        return out
+    for proj in projects:
+        d = os.path.join(PROJECTS, proj)
+        try:
+            names = os.listdir(d)
+        except OSError:
+            continue
+        for name in names:
+            if not name.endswith(".jsonl") or name.startswith("agent-"):
+                continue
+            p = os.path.join(d, name)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            out.append((p, st.st_mtime, st.st_size))
+    out.sort(key=lambda t: t[1], reverse=True)
+    return out[:MAX_SESSIONS]
+
+
+def rg_fields(paths, pattern, first_only):
+    """Run one ripgrep over many files: {path: [matched text, ...]}."""
+    found = {}
+    if not paths:
+        return found
+    args = ["rg", "--no-config", "-o", "-a", "--with-filename", "--no-line-number",
+            "--null", "-e", pattern]
+    if first_only:
+        args += ["-m", "1"]
+    # Batch the file list to stay under the argument limit.
+    for i in range(0, len(paths), 200):
+        try:
+            res = subprocess.run(args + ["--"] + paths[i:i + 200],
+                                 capture_output=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        for line in res.stdout.decode("utf-8", "replace").splitlines():
+            path, sep, text = line.partition("\0")
+            if sep:
+                found.setdefault(path, []).append(text)
+    return found
+
+
+def grep_fields(paths, pattern, first_only):
+    """Fallback for machines without ripgrep: scan each file in Python."""
+    rx = re.compile(pattern)
+    found = {}
+    for p in paths:
+        try:
+            with open(p, "rb") as f:
+                for raw in f:
+                    m = rx.search(raw.decode("utf-8", "replace"))
+                    if m:
+                        found.setdefault(p, []).append(m.group(0))
+                        if first_only:
+                            break
+        except OSError:
+            continue
+    return found
+
+
+def json_value(fragment):
+    """Parse '"key":"value"' into value."""
+    try:
+        return next(iter(json.loads("{" + fragment + "}").values()))
+    except (ValueError, StopIteration):
+        return None
+
+
+def index_files(paths):
+    """Read title, last prompt, cwd and branch from transcripts."""
+    fields = rg_fields if rg_available() else grep_fields
+    titles = fields(paths, r'"type":"ai-title","aiTitle":' + JSTR, False)
+    # Set by /rename or the desktop app; preferred over the AI's title.
+    custom = fields(paths, r'"type":"custom-title","customTitle":' + JSTR, False)
+    prompts = fields(paths, r'"type":"last-prompt","lastPrompt":' + JSTR, False)
+    cwds = fields(paths, r'"cwd":' + JSTR, True)
+    branches = fields(paths, r'"gitBranch":' + JSTR, True)
+    out = {}
+    for p in paths:
+        def last(m):
+            vals = m.get(p) or []
+            return json_value(vals[-1].split(",", 1)[1]) if vals and "," in vals[-1] else None
+        title = last(custom) or last(titles)
+        prompt = last(prompts)
+        cwd = json_value((cwds.get(p) or [""])[0]) if cwds.get(p) else None
+        branch = json_value((branches.get(p) or [""])[0]) if branches.get(p) else None
+        out[p] = {"title": title, "prompt": prompt, "cwd": cwd, "branch": branch}
+    return out
+
+
+class Index:
+    def __init__(self):
+        self.cache = read_json(INDEX, {})
+
+    def load(self):
+        """Every listable session, newest first. Re-reads only changed files."""
+        files = transcript_files()
+        stale = [p for p, mt, sz in files
+                 if self.cache.get(p, {}).get("key") != "%s:%s" % (mt, sz)]
+        if stale:
+            for p, info in index_files(stale).items():
+                st = next(t for t in files if t[0] == p)
+                info["key"] = "%s:%s" % (st[1], st[2])
+                self.cache[p] = info
+            keep = {p for p, _, _ in files}
+            self.cache = {p: v for p, v in self.cache.items() if p in keep}
+            try:
+                write_json(INDEX, self.cache)
+            except OSError:
+                pass
+        rows = []
+        for p, mtime, _ in files:
+            info = self.cache.get(p) or {}
+            cwd = info.get("cwd")
+            if not cwd or (cwd + "/").startswith(SKIP_CWD_PREFIXES):
+                continue
+            title = info.get("title") or info.get("prompt")
+            if not title:
+                continue  # opened and closed without a prompt
+            rows.append({
+                "id": os.path.basename(p)[:-len(".jsonl")],
+                "path": p,
+                "title": title,
+                "prompt": info.get("prompt") or "",
+                "cwd": cwd,
+                "branch": info.get("branch") or "",
+                "mtime": mtime,
+            })
+        return rows
+
+
+# --- Running sessions ----------------------------------------------------------
+
+def live_sessions():
+    """{sessionId: {pid, status, name, cwd}} for Claude processes still running."""
+    out = {}
+    try:
+        names = os.listdir(SESSIONS)
+    except OSError:
+        return out
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        rec = read_json(os.path.join(SESSIONS, name), None)
+        if not isinstance(rec, dict) or not rec.get("sessionId"):
+            continue
+        if not pid_alive(rec.get("pid")):
+            continue
+        out[rec["sessionId"]] = rec
+    return out
+
+
+def rex_panes(live):
+    """{sessionId: {rex_session, rex_block}} from claude-sidebar register.
+
+    Records for sessions that are no longer running are removed.
+    """
+    out = {}
+    try:
+        names = os.listdir(LIVE)
+    except OSError:
+        return out
+    for name in names:
+        path = os.path.join(LIVE, name)
+        rec = read_json(path, None)
+        sid = name[:-len(".json")]
+        if not isinstance(rec, dict) or sid not in live:
+            # Give a just-started session a moment to show up in ~/.claude/sessions.
+            try:
+                if time.time() - os.stat(path).st_mtime > 60:
+                    os.remove(path)
+            except OSError:
+                pass
+            continue
+        out[sid] = rec
+    return out
+
+
+# --- Full-text search ----------------------------------------------------------
+
+def message_text(rec):
+    """The words a person or Claude wrote in one transcript record, or ''."""
+    if rec.get("type") not in ("user", "assistant") or rec.get("isMeta"):
+        return ""
+    content = (rec.get("message") or {}).get("content")
+    if isinstance(content, str):
+        parts = [content]
+    elif isinstance(content, list):
+        parts = [c.get("text", "") for c in content
+                 if isinstance(c, dict) and c.get("type") == "text"]
+    else:
+        return ""
+    text = " ".join(parts)
+    if text.lstrip().startswith(("<local-command", "<command-name", "<system-reminder")):
+        return ""
+    return text
+
+
+def snippet(text, query, width=80):
+    text = " ".join(text.split())
+    i = text.lower().find(query.lower())
+    if i < 0:
+        return clip(text, width)
+    start = max(0, i - width // 3)
+    s = text[start:start + width]
+    return ("…" if start else "") + s
+
+
+def search_text(query, rows):
+    """{sessionId: snippet} for sessions whose messages contain query."""
+    if not query or not rows:
+        return {}
+    by_path = {r["path"]: r["id"] for r in rows}
+    hits = {}
+    paths = list(by_path)
+    if rg_available():
+        for i in range(0, len(paths), 200):
+            try:
+                res = subprocess.run(
+                    ["rg", "--no-config", "--json", "-a", "-i", "-F", "-m", "200",
+                     "--", query] + paths[i:i + 200],
+                    capture_output=True, timeout=30)
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+            for line in res.stdout.splitlines():
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                if ev.get("type") != "match":
+                    continue
+                path = ev["data"]["path"].get("text")
+                sid = by_path.get(path)
+                if not sid or sid in hits:
+                    continue
+                try:
+                    rec = json.loads(ev["data"]["lines"].get("text") or "")
+                except ValueError:
+                    continue
+                text = message_text(rec)
+                if query.lower() in text.lower():
+                    hits[sid] = snippet(text, query)
+    else:
+        q = query.lower()
+        for path, sid in by_path.items():
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    for line in f:
+                        if q not in line.lower():
+                            continue
+                        try:
+                            text = message_text(json.loads(line))
+                        except ValueError:
+                            continue
+                        if q in text.lower():
+                            hits[sid] = snippet(text, query)
+                            break
+            except OSError:
+                continue
+    return hits
+
+
+# --- Rex -----------------------------------------------------------------------
+
+def rex(*args, timeout=10):
+    try:
+        res = subprocess.run(["rex"] + list(args), capture_output=True, text=True,
+                             timeout=timeout)
+        return res.returncode == 0, (res.stdout or res.stderr).strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return False, str(e)
+
+
+def rex_block_exists(session, block):
+    ok, _ = rex("block", "inspect", "-s", session, block, "--json")
+    return ok
+
+
+def resume_argv(row, fork=False):
+    argv = ["claude", "--resume", row["id"]]
+    if fork:
+        argv.append("--fork-session")
+    return argv
+
+
+def tab_label(row):
+    return clip(row["title"], 24)
+
+
+# --- The sidebar ---------------------------------------------------------------
+
+class Sidebar:
+    def __init__(self, args):
+        self.args = args
+        self.index = Index()
+        self.rex_session = os.environ.get("REX_SESSION", "")
+        self.own_block = os.environ.get("REX_BLOCK", "")
+        self.main_block = args.main_block or ""
+        self.client = args.client or os.environ.get("REX_CLIENT", "")
+        self.rows = []
+        self.live = {}
+        self.panes = {}
+        self.state = {"archived": [], "pinned": []}
+        self.query = ""
+        self.typing = False
+        self.text_hits = None  # {id: snippet} once a full-text search ran
+        self.show_archived = False
+        self.this_project = False
+        self.by_project = False
+        self.sel_id = None
+        self.top = 0
+        self.message = ""
+        self.message_until = 0
+        self.confirm = None  # (prompt, fn) waiting for y
+        self.last_refresh = 0
+        self.items = []  # what is drawn: ("header", text) or ("row", row)
+
+    # Data
+
+    def refresh(self):
+        self.rows = self.index.load()
+        self.live = live_sessions()
+        self.panes = rex_panes(self.live)
+        st = read_json(STATE, {})
+        self.state = {"archived": list(st.get("archived") or []),
+                      "pinned": list(st.get("pinned") or [])}
+        self.last_refresh = time.time()
+
+    def save_state(self):
+        try:
+            write_json(STATE, self.state)
+        except OSError as e:
+            self.flash("Could not save: %s" % e)
+
+    def current_id(self):
+        """The session running in the pane this sidebar was opened beside."""
+        for sid, rec in self.panes.items():
+            if rec.get("rex_block") == self.main_block:
+                return sid
+        return None
+
+    def project_dir(self):
+        sid = self.current_id()
+        if sid:
+            rec = self.live.get(sid) or {}
+            if rec.get("cwd"):
+                return rec["cwd"]
+        return os.getcwd()
+
+    def visible(self):
+        archived = set(self.state["archived"])
+        pinned = set(self.state["pinned"])
+        rows = self.rows
+        if not self.show_archived:
+            rows = [r for r in rows if r["id"] not in archived]
+        if self.this_project:
+            here = self.project_dir()
+            rows = [r for r in rows if r["cwd"] == here or r["cwd"].startswith(here + "/")]
+        if self.query:
+            q = self.query.lower()
+            hits = self.text_hits or {}
+            rows = [r for r in rows
+                    if q in r["title"].lower() or q in r["cwd"].lower()
+                    or q in r["branch"].lower() or r["id"] in hits]
+        items = []
+        pin_rows = [r for r in rows if r["id"] in pinned]
+        rest = [r for r in rows if r["id"] not in pinned]
+        if pin_rows:
+            items.append(("header", "Pinned"))
+            items += [("row", r) for r in pin_rows]
+        if self.by_project:
+            groups = {}
+            order = []
+            for r in rest:
+                key = os.path.basename(r["cwd"].rstrip("/")) or r["cwd"]
+                if key not in groups:
+                    groups[key] = []
+                    order.append(key)
+                groups[key].append(r)
+            for key in order:
+                items.append(("header", key))
+                items += [("row", r) for r in groups[key]]
+        else:
+            last = None
+            for r in rest:
+                g = date_group(r["mtime"])
+                if g != last:
+                    items.append(("header", g))
+                    last = g
+                items.append(("row", r))
+        return items
+
+    def selected(self):
+        for kind, v in self.items:
+            if kind == "row" and v["id"] == self.sel_id:
+                return v
+        return None
+
+    def flash(self, text):
+        self.message = text
+        self.message_until = time.time() + 4
+
+    # Actions
+
+    def open_row(self, row, fork=False, replace=False):
+        sid = row["id"]
+        pane = self.panes.get(sid)
+        if pane and not fork:
+            s, b = pane.get("rex_session", ""), pane.get("rex_block", "")
+            if s and b and rex_block_exists(s, b):
+                self.focus_pane(s, b)
+                return
+        if sid in self.live and not fork and not pane:
+            rec = self.live[sid]
+            self.ask("Open in pid %s (%s). Resume a 2nd copy? y/n"
+                     % (rec.get("pid"), rec.get("entrypoint") or "claude"),
+                     lambda: self.resume(row, fork, replace))
+            return
+        if replace:
+            self.ask("Replace the main pane with this session? y/n",
+                     lambda: self.resume(row, fork, True))
+            return
+        self.resume(row, fork, False)
+
+    def focus_pane(self, session, block):
+        if session != self.rex_session:
+            args = []
+            if self.client:
+                args += ["-C", self.client]
+            ok, out = rex(*(args + ["do", "session.select", "session_id=" + session]))
+            if not ok:
+                self.flash(clip(out, 60))
+        ok, out = rex("focus", "-s", session, block)
+        if not ok:
+            self.flash(clip(out, 60))
+
+    def resume(self, row, fork, replace):
+        cwd = row["cwd"] if os.path.isdir(row["cwd"]) else HOME
+        if not self.rex_session:
+            self.flash("Not in Rex; run: cd %s && %s"
+                       % (short_path(cwd), " ".join(resume_argv(row, fork))))
+            return
+        if replace and self.main_block and self.own_block:
+            # Keep the sidebar's width: read its split before the close.
+            ratio = self.split_ratio()
+            rex("block", "close", "-s", self.rex_session, self.main_block)
+            ok, out = rex("split", "-s", self.rex_session, "-b", self.own_block,
+                          "--split=right", "-c", cwd, "--json",
+                          "--", *resume_argv(row, fork))
+            if not ok:
+                self.flash(clip(out, 60))
+                return
+            try:
+                self.main_block = json.loads(out)["block_ids"][0]
+            except (ValueError, KeyError, IndexError):
+                return
+            if ratio:
+                # rex split ignores --ratio here (Rex Beta 0.1.0); set the border.
+                rex("api", "call", "-s", self.rex_session, "session.resize_pane", json.dumps({
+                    "session_id": self.rex_session, "direction": "horizontal",
+                    "before_block_id": self.own_block, "after_block_id": self.main_block,
+                    "ratio": ratio}))
+            return
+        ok, out = rex("window", "new", "-s", self.rex_session, tab_label(row),
+                      "-c", cwd, "--json", "--", *resume_argv(row, fork))
+        if not ok:
+            self.flash(clip(out, 60))
+        else:
+            self.flash("Forked into a new tab" if fork else "Resumed in a new tab")
+
+    def split_ratio(self):
+        """The ratio of the split with this sidebar on its left, or None."""
+        ok, out = rex("api", "call", "-s", self.rex_session, "session.view", "{}")
+        if not ok:
+            return None
+        def walk(node):
+            if not isinstance(node, dict):
+                return None
+            split = node.get("split")
+            if isinstance(split, dict):
+                if (split.get("before") or {}).get("block_id") == self.own_block:
+                    return split.get("ratio")
+                return walk(split.get("before")) or walk(split.get("after"))
+            return None
+        try:
+            for win in json.loads(out).get("windows", []):
+                for layer in win.get("layers", []):
+                    r = walk(layer.get("layout"))
+                    if r:
+                        return r
+        except (ValueError, AttributeError):
+            pass
+        return None
+
+    def ask(self, prompt, fn):
+        self.confirm = (prompt, fn)
+
+    def toggle_list(self, key, sid):
+        lst = self.state[key]
+        if sid in lst:
+            lst.remove(sid)
+            return False
+        lst.append(sid)
+        return True
+
+    def run_text_search(self):
+        if not self.query:
+            self.text_hits = None
+            return
+        self.flash("Searching messages…")
+        self.draw()
+        self.text_hits = search_text(self.query, self.rows)
+        self.flash("%d session(s) mention \"%s\"" % (len(self.text_hits), clip(self.query, 20)))
+
+    # Drawing
+
+    def init_colors(self):
+        self.c_dim = curses.A_DIM
+        self.c_head = curses.A_BOLD
+        self.c_busy = curses.A_BOLD
+        self.c_wait = curses.A_BOLD
+        self.c_idle = 0
+        if curses.has_colors():
+            curses.start_color()
+            curses.use_default_colors()
+            curses.init_pair(1, curses.COLOR_GREEN, -1)
+            curses.init_pair(2, curses.COLOR_YELLOW, -1)
+            curses.init_pair(3, curses.COLOR_BLUE, -1)
+            curses.init_pair(4, 8 if curses.COLORS > 8 else curses.COLOR_WHITE, -1)
+            self.c_busy = curses.color_pair(1) | curses.A_BOLD
+            self.c_wait = curses.color_pair(2) | curses.A_BOLD
+            self.c_idle = curses.color_pair(3)
+            self.c_dim = curses.color_pair(4) if curses.COLORS > 8 else curses.A_DIM
+
+    def put(self, y, x, text, attr=0):
+        h, w = self.scr.getmaxyx()
+        if y < 0 or y >= h or x >= w:
+            return
+        text = text[: max(0, w - x - (1 if y == h - 1 else 0))]
+        try:
+            self.scr.addstr(y, x, text, attr)
+        except curses.error:
+            pass
+
+    def marker(self, row):
+        rec = self.live.get(row["id"])
+        if not rec:
+            return " ", 0
+        status = rec.get("status")
+        if status == "busy":
+            return "●", self.c_busy
+        if status == "waiting":
+            return "◆", self.c_wait
+        return "○", self.c_idle
+
+    def draw(self):
+        scr = self.scr
+        scr.erase()
+        h, w = scr.getmaxyx()
+        self.items = self.visible()
+        rows = [v for k, v in self.items if k == "row"]
+        if rows and self.sel_id not in {r["id"] for r in rows}:
+            self.sel_id = rows[0]["id"]
+
+        # Header: title, or the search box while typing.
+        flags = []
+        if self.this_project:
+            flags.append("here")
+        if self.by_project:
+            flags.append("by project")
+        if self.show_archived:
+            flags.append("+archived")
+        if self.typing or self.query:
+            label = "/" + self.query + ("▏" if self.typing else "")
+            if self.text_hits is not None and not self.typing:
+                label += "  (text)"
+            self.put(0, 0, clip(label, w), curses.A_BOLD)
+        else:
+            self.put(0, 0, "Sessions", curses.A_BOLD)
+            if flags:
+                f = " " + " · ".join(flags)
+                self.put(0, max(9, w - len(f)), f, self.c_dim)
+        self.put(1, 0, "─" * w, self.c_dim)
+
+        preview_h = 4
+        body_top, body_bottom = 2, h - preview_h  # rows [body_top, body_bottom)
+        current = self.current_id()
+
+        # Lay out the items as screen lines: header 1 line, a row 2 lines.
+        lines = []  # (item_index, line_in_item)
+        for i, (kind, _) in enumerate(self.items):
+            if kind == "header":
+                if lines:
+                    lines.append((None, 0))  # blank line before a group
+                lines.append((i, 0))
+            else:
+                lines.append((i, 0))
+                lines.append((i, 1))
+        sel_line = next((n for n, (i, part) in enumerate(lines)
+                         if i is not None and part == 0 and self.items[i][0] == "row"
+                         and self.items[i][1]["id"] == self.sel_id), 0)
+        room = max(1, body_bottom - body_top)
+        if sel_line < self.top:
+            self.top = max(0, sel_line - 1)
+        if sel_line + 1 >= self.top + room:
+            self.top = sel_line + 2 - room
+        self.top = max(0, min(self.top, max(0, len(lines) - room)))
+        self.hit_map = {}  # screen y -> session id, for mouse clicks
+
+        archived = set(self.state["archived"])
+        hits = self.text_hits or {}
+        for n in range(self.top, min(len(lines), self.top + room)):
+            y = body_top + n - self.top
+            i, part = lines[n]
+            if i is None:
+                continue
+            kind, v = self.items[i]
+            if kind == "header":
+                self.put(y, 0, clip(v, w), self.c_head)
+                continue
+            self.hit_map[y] = v["id"]
+            sel = v["id"] == self.sel_id
+            dim = v["id"] in archived
+            if part == 0:
+                mark, mattr = self.marker(v)
+                cur = "›" if v["id"] == current else " "
+                attr = (curses.A_REVERSE if sel else 0) | (self.c_dim if dim else 0)
+                self.put(y, 0, cur, curses.A_BOLD)
+                self.put(y, 1, mark, mattr)
+                text = " " + clip(v["title"], w - 3)
+                self.put(y, 2, text.ljust(w - 2), attr)
+            else:
+                sub = hits.get(v["id"]) if self.query else None
+                if not sub:
+                    proj = os.path.basename(v["cwd"].rstrip("/"))
+                    sub = "%s · %s" % (proj, age(v["mtime"]))
+                self.put(y, 3, clip(sub, w - 3), self.c_dim)
+
+        if not rows:
+            self.put(body_top + 1, 1, "No sessions" + (" match" if self.query else ""), self.c_dim)
+
+        # Preview strip.
+        y0 = h - preview_h
+        self.put(y0, 0, "─" * w, self.c_dim)
+        if self.confirm:
+            self.put(y0 + 1, 0, clip(self.confirm[0], w), self.c_wait)
+        elif self.message and time.time() < self.message_until:
+            self.put(y0 + 1, 0, clip(self.message, w), self.c_wait)
+        else:
+            row = self.selected()
+            if row:
+                live = self.live.get(row["id"])
+                status = ""
+                if live:
+                    status = {"busy": "working", "waiting": "needs you"}.get(
+                        live.get("status"), "open") + " · "
+                meta = "%s%s · %s" % (status, row["branch"] or "-", age(row["mtime"]))
+                self.put(y0 + 1, 0, clip(meta, w), self.c_dim)
+                self.put(y0 + 2, 0, clip(short_path(row["cwd"]), w), self.c_dim)
+                last = row["prompt"] or ""
+                self.put(y0 + 3, 0, clip("» " + last if last else "", w))
+            else:
+                self.put(y0 + 1, 0, clip("/ search  a archive  * pin  ? keys", w), self.c_dim)
+        scr.refresh()
+
+    # Input
+
+    def move(self, delta):
+        rows = [v["id"] for k, v in self.items if k == "row"]
+        if not rows:
+            return
+        i = rows.index(self.sel_id) if self.sel_id in rows else 0
+        self.sel_id = rows[max(0, min(len(rows) - 1, i + delta))]
+
+    def key_search(self, ch):
+        if ch == 27:  # Esc
+            self.typing = False
+            self.query = ""
+            self.text_hits = None
+        elif ch in ("\n", curses.KEY_ENTER):
+            self.typing = False
+            self.run_text_search()
+        elif ch in (curses.KEY_BACKSPACE, "\x7f", "\x08"):
+            self.query = self.query[:-1]
+            self.text_hits = None
+        elif ch in (curses.KEY_DOWN, "\x0e"):
+            self.move(1)
+        elif ch in (curses.KEY_UP, "\x10"):
+            self.move(-1)
+        elif ch == "\x15":  # ctrl+u clears the box
+            self.query = ""
+            self.text_hits = None
+        elif isinstance(ch, str) and ch.isprintable():
+            self.query += ch
+            self.text_hits = None
+
+    def key(self, ch):
+        if self.confirm:
+            prompt, fn = self.confirm
+            self.confirm = None
+            if ch in ("y", "Y"):
+                fn()
+            return True
+        if self.typing:
+            self.key_search(ch)
+            return True
+        row = self.selected()
+        if ch in ("q",):
+            return False
+        if ch in ("j", curses.KEY_DOWN):
+            self.move(1)
+        elif ch in ("k", curses.KEY_UP):
+            self.move(-1)
+        elif ch in (curses.KEY_NPAGE, "\x06"):
+            self.move(10)
+        elif ch in (curses.KEY_PPAGE, "\x02"):
+            self.move(-10)
+        elif ch in ("g", curses.KEY_HOME):
+            self.move(-10 ** 6)
+        elif ch in ("G", curses.KEY_END):
+            self.move(10 ** 6)
+        elif ch in ("\n", curses.KEY_ENTER):
+            if row:
+                self.open_row(row)
+        elif ch == "o":
+            if row:
+                self.open_row(row, replace=True)
+        elif ch == "f":
+            if row:
+                self.open_row(row, fork=True)
+        elif ch == "/":
+            self.typing = True
+            self.text_hits = None
+        elif ch == 27:  # Esc clears a finished search
+            self.query = ""
+            self.text_hits = None
+        elif ch == "a":
+            if row:
+                if self.toggle_list("archived", row["id"]):
+                    self.flash("Archived (A shows archived)")
+                    self.move(1)
+                else:
+                    self.flash("Restored")
+                self.save_state()
+        elif ch == "A":
+            self.show_archived = not self.show_archived
+        elif ch == "*":
+            if row:
+                self.flash("Pinned" if self.toggle_list("pinned", row["id"]) else "Unpinned")
+                self.save_state()
+        elif ch == ".":
+            self.this_project = not self.this_project
+            if self.this_project:
+                self.flash("Only " + short_path(self.project_dir()))
+        elif ch == "p":
+            self.by_project = not self.by_project
+        elif ch == "r":
+            self.refresh()
+            self.flash("Refreshed")
+        elif ch == "?":
+            self.flash("⏎ open o here f fork / find a archive A shown * pin . here p group")
+        elif ch == curses.KEY_MOUSE:
+            self.mouse()
+        return True
+
+    def mouse(self):
+        try:
+            _, _, y, _, bstate = curses.getmouse()
+        except curses.error:
+            return
+        if bstate & getattr(curses, "BUTTON4_PRESSED", 0):
+            self.move(-1)
+            return
+        if bstate & getattr(curses, "BUTTON5_PRESSED", 0):
+            self.move(1)
+            return
+        sid = self.hit_map.get(y)
+        if not sid or not bstate & curses.BUTTON1_PRESSED:
+            return
+        if sid == self.sel_id:  # a second click on the selected row opens it
+            row = self.selected()
+            if row:
+                self.open_row(row)
+        else:
+            self.sel_id = sid
+
+    def run(self, scr):
+        self.scr = scr
+        curses.curs_set(0)
+        self.init_colors()
+        scr.keypad(True)
+        curses.mousemask(curses.ALL_MOUSE_EVENTS | getattr(curses, "REPORT_MOUSE_POSITION", 0))
+        curses.mouseinterval(0)
+        curses.set_escdelay(25)
+        scr.timeout(250)
+        self.refresh()
+        while True:
+            if time.time() - self.last_refresh > REFRESH_SECONDS:
+                self.refresh()
+            self.draw()
+            try:
+                ch = scr.get_wch()
+            except curses.error:
+                continue
+            if ch == curses.KEY_RESIZE:
+                continue
+            if isinstance(ch, str) and len(ch) == 1 and ord(ch) in (10, 13, 27):
+                ch = ord(ch) if ord(ch) == 27 else "\n"
+            if not self.key(ch):
+                break
+
+
+def dump(args):
+    """Print the list as plain text, for checking without a terminal UI."""
+    sb = Sidebar(args)
+    sb.refresh()
+    if args.search:
+        sb.query = args.search
+        sb.text_hits = search_text(args.search, sb.rows)
+    live = sb.live
+    for kind, v in sb.visible():
+        if kind == "header":
+            print("\n" + v)
+            continue
+        mark = {"busy": "●", "waiting": "◆"}.get((live.get(v["id"]) or {}).get("status"),
+                                                  "○" if v["id"] in live else " ")
+        sub = (sb.text_hits or {}).get(v["id"]) or os.path.basename(v["cwd"])
+        print("%s %s  [%s · %s]" % (mark, clip(v["title"], 60), clip(sub, 50), age(v["mtime"])))
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Sidebar of Claude Code sessions.")
+    ap.add_argument("--main-block", help="the Rex block this sidebar sits beside")
+    ap.add_argument("--client", help="the Rex client (app) to switch sessions in")
+    ap.add_argument("--dump", action="store_true", help="print the list and exit")
+    ap.add_argument("--search", help="with --dump: full-text search")
+    args = ap.parse_args()
+    locale.setlocale(locale.LC_ALL, "")
+    if args.dump:
+        dump(args)
+        return
+    try:
+        curses.wrapper(Sidebar(args).run)
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
