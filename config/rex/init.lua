@@ -81,22 +81,93 @@ rex.bind(p("r"), "client.config.reload")
 
 -- Claude sessions sidebar: a list of past and running Claude Code sessions
 -- on the left, like the desktop app. Press again to close it.
--- See bin/claude-sidebar and bin/claude-sessions.
+-- See bin/claude-sessions.
+--
+-- Written with Rex's Lua calls rather than the rex CLI: an app connected to
+-- this server from another Mac runs the action there, where `rex` would
+-- reach that Mac's own server. These calls go to the server the app shows.
+local sidebar_label = "claude-sessions"
+local sidebar_columns = 40
+local terminal = "com.superlogical.terminal"
+
+local function find_sidebar(session_id, block_id)
+  local view, err = rex.session.view{ session_id = session_id }
+  if view == nil then error(err, 0) end
+  for _, win in ipairs(view.windows or {}) do
+    local here, found = false, nil
+    for _, layer in ipairs(win.layers or {}) do
+      for _, b in ipairs(layer.blocks or {}) do
+        if b.block_id == block_id then here = true end
+        if b.label == sidebar_label then found = b.block_id end
+      end
+    end
+    if here then return found end
+  end
+  return nil
+end
+
 rex.action{
   name = "claude_sidebar",
   title = "Toggle Claude Sessions",
   description = "Show or hide the Claude Code sessions sidebar beside this pane.",
   keywords = "claude sessions history sidebar resume",
   run = function(ctx)
-    if not ctx.session_id or not ctx.block_id then
+    local session_id, block_id = ctx.session_id, ctx.block_id
+    if not session_id or not block_id then
       error("no focused pane", 0)
     end
-    local r, err = rex.exec({
-      os.getenv("HOME") .. "/bin/claude-sidebar", "toggle",
-      ctx.session_id, ctx.block_id, ctx.client_id or "",
-    }, { timeout = 15 })
-    if r == nil then error(err, 0) end
-    if not r.ok then error(r.stderr, 0) end
+
+    local existing = find_sidebar(session_id, block_id)
+    if existing then
+      local _, err = rex.call("block.close", { session_id = session_id, block_id = existing })
+      if err then error(err, 0) end
+      return
+    end
+
+    -- About 40 columns, never more than a third of the pane being split.
+    local ratio = 0.22
+    local size = rex.block.call(terminal, "size", { session_id = session_id, block_id = block_id })
+    if size and size.columns and size.columns > 0 then
+      ratio = math.max(0.05, math.min(0.33, sidebar_columns / size.columns))
+    end
+    local pwd = rex.block.call(terminal, "pwd", { session_id = session_id, block_id = block_id }) or {}
+
+    -- $HOME is expanded by the shell on the server's machine.
+    local command = { "sh", "-c", 'exec "$HOME/bin/claude-sessions" "$@"', "claude-sessions",
+      "--main-block", block_id }
+    if ctx.client_id then
+      table.insert(command, "--client")
+      table.insert(command, ctx.client_id)
+    end
+    local options = { command = command }
+    if pwd.path and pwd.path ~= "" then options.cwd = pwd.path end
+
+    local created, err = rex.session.new_split{
+      session_id = session_id,
+      anchor_id = block_id,
+      direction = "horizontal",
+      side = "before",
+      ratio = ratio,
+      focus = false,
+      layout = { block = { flavor = terminal .. ".shell", label = sidebar_label, options = options } },
+    }
+    if created == nil then error(err, 0) end
+
+    -- Rex evens out a new split right after creating it (Beta 0.1.0), so
+    -- set the border again a moment later.
+    local new_block = created.block_ids and created.block_ids[1]
+    if new_block then
+      local function resize()
+        rex.session.resize_pane{
+          session_id = session_id, direction = "horizontal",
+          before_block_id = new_block, after_block_id = block_id, ratio = ratio,
+        }
+      end
+      -- Config actions have no timers; waiting on a command doesn't hold Rex up.
+      resize()
+      rex.exec({ "/bin/sleep", "0.3" }, { timeout = 5 })
+      resize()
+    end
   end,
 }
 rex.bind(p("e"), "claude_sidebar")
