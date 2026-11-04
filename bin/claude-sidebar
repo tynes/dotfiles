@@ -1,0 +1,97 @@
+#!/bin/sh
+# Open or close the Claude sessions sidebar (bin/claude-sessions) in Rex.
+#
+#   claude-sidebar toggle [SESSION BLOCK [CLIENT]]
+#       Close the sidebar in BLOCK's tab if there is one, else open it on the
+#       left of BLOCK. Defaults to $REX_SESSION and $REX_BLOCK. Bound to
+#       ctrl+b e in config/rex/init.lua.
+#   claude-sidebar register
+#       A Claude Code SessionStart hook: reads the hook's JSON on stdin and
+#       records which Rex pane the session runs in, so the sidebar can jump to
+#       it instead of resuming it twice. Silent, and never fails the hook.
+
+set -u
+
+# Rex runs actions with a bare PATH: add Homebrew (jq) and Rex's own CLI.
+rex_app="$HOME/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS"
+PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+[ -x "$rex_app/rex" ] && PATH="$PATH:$rex_app"
+export PATH
+
+label=claude-sessions
+# Run the sidebar by path: ~/bin may not be on PATH where Rex starts it.
+here=$(cd "$(dirname "$0")" && pwd)
+sidebar="$here/claude-sessions"
+live_dir="${XDG_CACHE_HOME:-$HOME/.cache}/claude-sidebar/live"
+
+die() { printf 'claude-sidebar: %s\n' "$*" >&2; exit 1; }
+
+toggle() {
+    session=${1:-${REX_SESSION:-}}
+    block=${2:-${REX_BLOCK:-}}
+    client=${3:-}
+    [ -n "$session" ] && [ -n "$block" ] || die "no Rex session or block (run inside Rex)"
+    command -v jq >/dev/null || die "jq is required"
+
+    window=$(rex block inspect -s "$session" "$block" --json | jq -er '.block.window_id') ||
+        die "can't find block $block"
+
+    # A sidebar already in this tab: close it.
+    existing=$(rex block ls -s "$session" --json | jq -r --arg w "$window" --arg l "$label" \
+        '.blocks[] | select(.window_id == $w and .label == $l and .placement == "placed") | .block_id' | head -n 1)
+    if [ -n "$existing" ]; then
+        exec rex block close -s "$session" "$existing"
+    fi
+
+    # The sidebar gets a fixed width, like the desktop app's: about 40
+    # columns, but never more than a third of the pane it splits.
+    total=$(rex block call -s "$session" -b "$block" size 2>/dev/null | jq -r '.columns // empty')
+    width=${CLAUDE_SIDEBAR_COLUMNS:-40}
+
+    # Start in the main pane's directory when Rex knows it, so "." filters to it.
+    cwd=$(rex block call -s "$session" -b "$block" pwd 2>/dev/null | jq -r '.path // .pwd // empty' 2>/dev/null)
+    set -- --main-block "$block"
+    [ -n "$client" ] && set -- "$@" --client "$client"
+    set -- -- "$sidebar" "$@"
+    if [ -n "$cwd" ] && [ -d "$cwd" ]; then
+        set -- -c "$cwd" "$@"
+    fi
+    created=$(rex split -s "$session" -b "$block" --split=left --label "$label" \
+        --focus=false --json "$@") || die "split failed"
+    new=$(printf '%s' "$created" | jq -r '.block_ids[0] // empty')
+
+    # rex split's --ratio doesn't apply to a left split (Rex Beta 0.1.0), so
+    # move the border afterwards.
+    if [ -n "$new" ] && [ -n "$total" ] && [ "$total" -gt 0 ]; then
+        ratio=$(awk -v w="$width" -v t="$total" 'BEGIN {
+            r = w / t; if (r > 0.33) r = 0.33; if (r < 0.05) r = 0.05; printf "%.3f", r }')
+        rex api call -s "$session" session.resize_pane "$(jq -nc --arg s "$session" \
+            --arg b "$new" --arg a "$block" --argjson r "$ratio" \
+            '{session_id: $s, direction: "horizontal", before_block_id: $b,
+              after_block_id: $a, ratio: $r}')" >/dev/null 2>&1 || true
+    fi
+}
+
+register() {
+    # Only sessions inside Rex have a pane to jump to.
+    [ -n "${REX_SESSION:-}" ] && [ -n "${REX_BLOCK:-}" ] || exit 0
+    command -v jq >/dev/null || exit 0
+    input=$(cat)
+    id=$(printf '%s' "$input" | jq -r '.session_id // empty' 2>/dev/null)
+    case "$id" in
+        ''|*/*|.*) exit 0 ;;
+    esac
+    mkdir -p "$live_dir" || exit 0
+    tmp="$live_dir/.$id.$$"
+    printf '%s' "$input" | jq -c --arg s "$REX_SESSION" --arg b "$REX_BLOCK" \
+        '{session_id, cwd, rex_session: $s, rex_block: $b}' > "$tmp" 2>/dev/null &&
+        mv -f "$tmp" "$live_dir/$id.json"
+    rm -f "$tmp"
+    exit 0
+}
+
+case "${1:-}" in
+    toggle) shift; toggle "$@" ;;
+    register) register ;;
+    *) printf 'usage: claude-sidebar toggle [SESSION BLOCK [CLIENT]] | register\n' >&2; exit 2 ;;
+esac

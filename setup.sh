@@ -221,6 +221,8 @@ link_all() {
     link config/direnv        "$HOME/.config/direnv"
     link config/rex           "$HOME/.config/rex"
     link config/git/ignore    "$HOME/.config/git/ignore"
+    # Only the settings file: Claude keeps sessions and caches in ~/.claude.
+    link config/claude/settings.json "$HOME/.claude/settings.json"
 
     # SSH refuses a config that others can write, and ~/.ssh holds keys.
     ensure_private_dir "$HOME/.ssh"
