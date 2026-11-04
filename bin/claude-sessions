@@ -15,6 +15,7 @@ Keeps its own state in ~/.cache/claude-sidebar/:
 
 Keys: j/k move, Enter open, / search (Enter in it searches message text too),
 a archive, A show archived, * pin, f fork, o open in the main pane,
+c copy the resume command, m (or right-click) menu,
 . this project only, p group by project, r refresh, q quit.
 """
 
@@ -41,6 +42,12 @@ LIVE = os.path.join(CACHE, "live")
 
 MAX_SESSIONS = 300
 REFRESH_SECONDS = 2.0
+# Mouse input. The sidebar turns on xterm's SGR mouse mode itself and reads
+# the events, rather than using curses' decoding: macOS's Python curses
+# reads a trackpad's sideways scroll as a right-click and has no wheel-down.
+MOUSE_ON = "\x1b[?1000h\x1b[?1006h"
+MOUSE_OFF = "\x1b[?1006l\x1b[?1000l"
+WHEEL_ROWS = 3
 SKIP_CWD_PREFIXES = ("/private/tmp/", "/tmp/", "/private/var/folders/")
 
 # A JSON string body: anything but a quote or backslash, or an escape.
@@ -408,6 +415,10 @@ def rex_block_exists(session, block):
     return ok
 
 
+def shell_quote(text):
+    return "'" + text.replace("'", "'\\''") + "'"
+
+
 def resume_argv(row, fork=False):
     argv = ["claude", "--resume", row["id"]]
     if fork:
@@ -441,9 +452,12 @@ class Sidebar:
         self.by_project = False
         self.sel_id = None
         self.top = 0
+        self.follow = True  # the view follows the selection until the wheel moves it
         self.message = ""
         self.message_until = 0
         self.confirm = None  # (prompt, fn) waiting for y
+        self.menu = None  # the right-click menu while it is open
+        self.menu_hits = {}  # screen y -> menu item index, for clicks
         self.last_refresh = 0
         self.items = []  # what is drawn: ("header", text) or ("row", row)
 
@@ -635,6 +649,90 @@ class Sidebar:
         lst.append(sid)
         return True
 
+    def archive(self, row):
+        if self.toggle_list("archived", row["id"]):
+            self.flash("Archived (A shows archived)")
+            if row["id"] == self.sel_id:
+                self.move(1)
+        else:
+            self.flash("Restored")
+        self.save_state()
+
+    def pin(self, row):
+        self.flash("Pinned" if self.toggle_list("pinned", row["id"]) else "Unpinned")
+        self.save_state()
+
+    def copy_resume(self, row):
+        cmd = "cd %s && %s" % (shell_quote(row["cwd"]), " ".join(resume_argv(row)))
+        try:
+            subprocess.run(["pbcopy"], input=cmd, text=True, timeout=5, check=True)
+            self.flash("Copied: " + cmd)
+        except (OSError, subprocess.SubprocessError):
+            self.flash(cmd)
+
+    # The right-click menu
+
+    def open_menu(self, row, x=None, y=None):
+        archived = row["id"] in self.state["archived"]
+        pinned = row["id"] in self.state["pinned"]
+        items = [
+            ("Open", "\n", lambda: self.open_row(row)),
+            ("Open in main pane", "o", lambda: self.open_row(row, replace=True)),
+            ("Fork into new tab", "f", lambda: self.open_row(row, fork=True)),
+            ("Unpin" if pinned else "Pin to top", "*", lambda: self.pin(row)),
+            ("Restore" if archived else "Archive", "a", lambda: self.archive(row)),
+            ("Copy resume command", "c", lambda: self.copy_resume(row)),
+        ]
+        self.sel_id = row["id"]
+        self.menu = {"row": row, "items": items, "sel": 0, "x": x, "y": y}
+
+    def run_menu_item(self, i):
+        menu, self.menu = self.menu, None
+        if menu and 0 <= i < len(menu["items"]):
+            menu["items"][i][2]()
+
+    def key_menu(self, ch):
+        menu = self.menu
+        n = len(menu["items"])
+        if ch in (27, "q", "m"):
+            self.menu = None
+        elif ch in ("j", curses.KEY_DOWN, "\x0e"):
+            menu["sel"] = (menu["sel"] + 1) % n
+        elif ch in ("k", curses.KEY_UP, "\x10"):
+            menu["sel"] = (menu["sel"] - 1) % n
+        elif ch in ("\n", curses.KEY_ENTER):
+            self.run_menu_item(menu["sel"])
+        else:
+            for i, (_, key, _) in enumerate(menu["items"]):
+                if ch == key:
+                    self.run_menu_item(i)
+                    break
+
+    def draw_menu(self):
+        menu = self.menu
+        h, w = self.scr.getmaxyx()
+        labels = [label for label, _, _ in menu["items"]]
+        keys = ["⏎" if k == "\n" else k for _, k, _ in menu["items"]]
+        inner = min(max(len(l) for l in labels) + 4, max(8, w - 2))
+        bw, bh = inner + 2, len(labels) + 2
+        # Below the row that was clicked, or above it when there's no room.
+        y = menu["y"] if menu["y"] is not None else self.sel_y
+        top = y + 1 if y + 1 + bh <= h else max(0, y - bh)
+        x = menu["x"] if menu["x"] is not None else 2
+        left = max(0, min(x, w - bw))
+        self.menu_hits = {}
+        self.put(top, left, "┌" + "─" * inner + "┐", curses.A_BOLD)
+        for i, label in enumerate(labels):
+            yy = top + 1 + i
+            attr = curses.A_REVERSE if i == menu["sel"] else 0
+            text = " " + clip(label, inner - 4).ljust(inner - 3) + keys[i] + " "
+            self.put(yy, left, "│", curses.A_BOLD)
+            self.put(yy, left + 1, text[:inner].ljust(inner), attr)
+            self.put(yy, left + 1 + inner, "│", curses.A_BOLD)
+            self.menu_hits[yy] = i
+        self.put(top + bh - 1, left, "└" + "─" * inner + "┘", curses.A_BOLD)
+        self.menu_box = (left, top, bw, bh)
+
     def run_text_search(self):
         if not self.query:
             self.text_hits = None
@@ -732,12 +830,14 @@ class Sidebar:
                          if i is not None and part == 0 and self.items[i][0] == "row"
                          and self.items[i][1]["id"] == self.sel_id), 0)
         room = max(1, body_bottom - body_top)
-        if sel_line < self.top:
-            self.top = max(0, sel_line - 1)
-        if sel_line + 1 >= self.top + room:
-            self.top = sel_line + 2 - room
+        if self.follow:
+            if sel_line < self.top:
+                self.top = max(0, sel_line - 1)
+            if sel_line + 1 >= self.top + room:
+                self.top = sel_line + 2 - room
         self.top = max(0, min(self.top, max(0, len(lines) - room)))
         self.hit_map = {}  # screen y -> session id, for mouse clicks
+        self.sel_y = body_top
 
         archived = set(self.state["archived"])
         hits = self.text_hits or {}
@@ -752,6 +852,8 @@ class Sidebar:
                 continue
             self.hit_map[y] = v["id"]
             sel = v["id"] == self.sel_id
+            if sel and part == 0:
+                self.sel_y = y
             dim = v["id"] in archived
             if part == 0:
                 mark, mattr = self.marker(v)
@@ -793,11 +895,14 @@ class Sidebar:
                 self.put(y0 + 3, 0, clip("» " + last if last else "", w))
             else:
                 self.put(y0 + 1, 0, clip("/ search  a archive  * pin  ? keys", w), self.c_dim)
+        if self.menu:
+            self.draw_menu()
         scr.refresh()
 
     # Input
 
     def move(self, delta):
+        self.follow = True
         rows = [v["id"] for k, v in self.items if k == "row"]
         if not rows:
             return
@@ -832,6 +937,9 @@ class Sidebar:
             self.confirm = None
             if ch in ("y", "Y"):
                 fn()
+            return True
+        if self.menu:
+            self.key_menu(ch)
             return True
         if self.typing:
             self.key_search(ch)
@@ -868,18 +976,18 @@ class Sidebar:
             self.text_hits = None
         elif ch == "a":
             if row:
-                if self.toggle_list("archived", row["id"]):
-                    self.flash("Archived (A shows archived)")
-                    self.move(1)
-                else:
-                    self.flash("Restored")
-                self.save_state()
+                self.archive(row)
         elif ch == "A":
             self.show_archived = not self.show_archived
         elif ch == "*":
             if row:
-                self.flash("Pinned" if self.toggle_list("pinned", row["id"]) else "Unpinned")
-                self.save_state()
+                self.pin(row)
+        elif ch == "m":
+            if row:
+                self.open_menu(row)
+        elif ch == "c":
+            if row:
+                self.copy_resume(row)
         elif ch == ".":
             self.this_project = not self.this_project
             if self.this_project:
@@ -890,41 +998,107 @@ class Sidebar:
             self.refresh()
             self.flash("Refreshed")
         elif ch == "?":
-            self.flash("⏎ open o here f fork / find a archive A shown * pin . here p group")
-        elif ch == curses.KEY_MOUSE:
-            self.mouse()
+            self.flash("⏎ open m menu o here f fork / find a archive * pin . here p group")
         return True
 
-    def mouse(self):
-        try:
-            _, _, y, _, bstate = curses.getmouse()
-        except curses.error:
+    def scroll(self, delta):
+        """Move the view by delta lines, leaving the selection where it is."""
+        self.follow = False
+        self.top = max(0, self.top + delta)  # draw() clamps the bottom
+
+    def mouse(self, button, x, y, pressed):
+        """One SGR mouse event: button code, 0-based cell, press or release."""
+        if button & 32:
+            return  # motion
+        base = button & ~(4 | 8 | 16)  # drop shift, alt and ctrl
+        if base >= 64:
+            if base in (64, 65):
+                step = -1 if base == 64 else 1
+                if self.menu:
+                    n = len(self.menu["items"])
+                    self.menu["sel"] = (self.menu["sel"] + step) % n
+                else:
+                    self.scroll(step * WHEEL_ROWS)
+            return  # 66 and 67 scroll sideways: nothing to do
+        if not pressed:
             return
-        if bstate & getattr(curses, "BUTTON4_PRESSED", 0):
-            self.move(-1)
+        left, right = base == 0, base == 2
+        if not (left or right):
             return
-        if bstate & getattr(curses, "BUTTON5_PRESSED", 0):
-            self.move(1)
+        if self.menu:
+            bx, by, bw, bh = getattr(self, "menu_box", (0, 0, 0, 0))
+            if y in self.menu_hits and bx <= x < bx + bw:
+                if left:
+                    self.run_menu_item(self.menu_hits[y])
+                else:
+                    self.menu["sel"] = self.menu_hits[y]
+            else:
+                self.menu = None  # a click outside closes it
             return
         sid = self.hit_map.get(y)
-        if not sid or not bstate & curses.BUTTON1_PRESSED:
+        if not sid:
             return
-        if sid == self.sel_id:  # a second click on the selected row opens it
+        if right:
+            row = next((v for k, v in self.items if k == "row" and v["id"] == sid), None)
+            if row:
+                self.open_menu(row, x, y)
+        elif sid == self.sel_id:  # a second click on the selected row opens it
             row = self.selected()
             if row:
                 self.open_row(row)
         else:
             self.sel_id = sid
 
+    def read_escape(self):
+        """After an Esc, read an SGR mouse event if one follows.
+
+        Returns True when the input was a mouse event (already handled), or
+        False for a plain Esc key.
+        """
+        scr = self.scr
+        scr.timeout(30)
+        try:
+            def get():
+                try:
+                    return scr.get_wch()
+                except curses.error:
+                    return None
+            if get() != "[" or get() != "<":
+                return False
+            buf = ""
+            while True:
+                c = get()
+                if c is None or not isinstance(c, str) or len(buf) > 24:
+                    return True  # a broken sequence: drop it
+                if c in ("M", "m"):
+                    break
+                buf += c
+            try:
+                b, x, y = (int(v) for v in buf.split(";"))
+            except ValueError:
+                return True
+            self.mouse(b, x - 1, y - 1, c == "M")
+            return True
+        finally:
+            scr.timeout(250)
+
     def run(self, scr):
         self.scr = scr
         curses.curs_set(0)
         self.init_colors()
         scr.keypad(True)
-        curses.mousemask(curses.ALL_MOUSE_EVENTS | getattr(curses, "REPORT_MOUSE_POSITION", 0))
-        curses.mouseinterval(0)
         curses.set_escdelay(25)
         scr.timeout(250)
+        sys.stdout.write(MOUSE_ON)
+        sys.stdout.flush()
+        try:
+            self.loop()
+        finally:
+            sys.stdout.write(MOUSE_OFF)
+            sys.stdout.flush()
+
+    def loop(self):
+        scr = self.scr
         self.refresh()
         while True:
             if time.time() - self.last_refresh > REFRESH_SECONDS:
@@ -934,10 +1108,14 @@ class Sidebar:
                 ch = scr.get_wch()
             except curses.error:
                 continue
-            if ch == curses.KEY_RESIZE:
+            if ch in (curses.KEY_RESIZE, curses.KEY_MOUSE):
                 continue
-            if isinstance(ch, str) and len(ch) == 1 and ord(ch) in (10, 13, 27):
-                ch = ord(ch) if ord(ch) == 27 else "\n"
+            if ch == "\x1b":
+                if self.read_escape():
+                    continue
+                ch = 27
+            elif ch == "\r":
+                ch = "\n"
             if not self.key(ch):
                 break
 
