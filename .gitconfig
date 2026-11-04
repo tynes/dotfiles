@@ -32,6 +32,8 @@
 	ci = commit
 	st = status -sb
 	sw = switch
+	default-branch = "!f() { r=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) || { git remote set-head origin --auto >/dev/null 2>&1 && r=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD); } || { echo 'could not detect default branch of origin' >&2; exit 1; }; echo \"${r#origin/}\"; }; f"
+	pd = "!b=$(git default-branch) && git pull origin \"$b\""
 # Managed by `gh auth`. The empty `helper =` is not a typo: credential.helper is
 # a multi-valued list, and an empty value resets it -- here it discards the
 # system-level osxkeychain helper from /opt/homebrew/etc/gitconfig so that only
