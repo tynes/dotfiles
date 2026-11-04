@@ -1,7 +1,7 @@
 # Neovim config
 
 A small config for Neovim 0.12+. It replaces AstroNvim (48 plugins plus Mason)
-with Neovim's built-in features and four pinned plugins.
+with Neovim's built-in features and a handful of pinned plugins.
 
 ## Layout
 
@@ -26,6 +26,8 @@ nvim-pack-lock.json      pinned plugin revisions (commit this)
 | nvim-treesitter (`main`) | builds parsers; highlighting itself is built in |
 | gitsigns.nvim | git signs, hunk navigation, blame |
 | fzf-lua | file, grep, buffer, symbol pickers (uses the `fzf` binary) |
+| neo-tree.nvim (`v3.x`) | side panel: file tree, open buffers, git status |
+| plenary.nvim, nui.nvim, nvim-web-devicons | needed by neo-tree |
 
 Plugins are managed by `vim.pack`. A fresh machine installs the exact revisions
 in `nvim-pack-lock.json`, and asks before installing anything new.
@@ -74,7 +76,9 @@ Building parsers needs the `tree-sitter` CLI and a C compiler.
 | `]g` `[g`, `<Leader>gp` / `gl` / `gs` / `gr` / `gd` | hunks, preview / blame / stage / reset / diff |
 | `gd` `gD` `gr` `gi` `K`, `<Leader>rn`, `<Leader>ca` | LSP |
 | `<Leader>ld` / `lD` / `lS` | line diagnostics / all diagnostics / symbols |
-| `<Leader>w` / `q` / `Q` / `c` / `n` / `e` | save / quit / quit all / close buffer / new / explorer |
+| `<Leader>w` / `q` / `Q` / `c` / `n` | save / quit / quit all / close buffer / new |
+| `<Leader>e` / `o` | toggle side panel / jump between panel and file |
+| `[b` `]b` (in panel) | switch panel tab: files, buffers, git |
 | `<Leader>/` | comment |
 | `<Leader>u` | undotree |
 | `<C-h/j/k/l>` | move between windows |
