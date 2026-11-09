@@ -43,7 +43,7 @@ APT_PACKAGES=(
 
 MACOS_STEPS=(
     rust brew_packages python_symlink
-    foundry amp grok opencode pi keepassxcr
+    foundry amp amp_desktop grok opencode pi keepassxcr
     nvim_tools nvim_plugins
 )
 
@@ -52,7 +52,7 @@ DEBIAN_STEPS=(
     neovim eza fzf zoxide difftastic delta go node pnpm bun uv foundry gh jj
     just bitwarden gcloud awscli claude codex antigravity nvimpager moor
     tailscale ghostty docker starship worktrunk rclone hcloud
-    protobuf amp grok opencode pi superfile muse wrangler
+    protobuf amp amp_desktop grok opencode pi superfile muse wrangler
     keepassxcr
     nvim_tools nvim_plugins
 )
@@ -597,8 +597,47 @@ install_foundry() {
     "$HOME/.foundry/bin/foundryup"
 }
 
-install_amp()  { already amp  || run_installer https://ampcode.com/install.sh bash; }
+# Amp CLI: Homebrew tap on macOS, the vendor script on Linux.
+install_amp() {
+    already amp && return
+    if [ "$OS" = macos ]; then
+        brew install ampcode/tap/ampcode
+    else
+        run_installer https://ampcode.com/install.sh bash
+    fi
+}
 install_grok() { already grok "Grok CLI" || run_installer https://x.ai/cli/install.sh bash; }
+
+# Amp desktop app. On Linux, amp.sources embeds its own signing key
+# (Signed-By), so the key is scoped to this repo.
+install_amp_desktop() {
+    if [ "$OS" = macos ]; then
+        brew install --cask amp-app
+        return
+    fi
+    if dpkg -s amp-desktop >/dev/null 2>&1; then
+        info "Amp desktop already installed"
+        return
+    fi
+    info "Installing Amp desktop from static.ampcode.com..."
+    local src rc
+    src="$(step_tmp)/amp.sources"
+    fetch https://static.ampcode.com/linux/amp.sources "$src"
+    set +e
+    (
+        set -e
+        sudo install -m 0644 "$src" /etc/apt/sources.list.d/amp.sources
+        sudo apt-get update
+        apt_install amp-desktop
+    )
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        warn "Removing the amp apt repository so it can't break later apt runs"
+        sudo rm -f /etc/apt/sources.list.d/amp.sources
+    fi
+    return "$rc"
+}
 
 install_opencode() {
     already opencode && return
