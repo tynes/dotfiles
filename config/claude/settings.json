@@ -35,14 +35,14 @@
       "effortLevel": "medium"
     }
   },
-  "advisorModel": "opus",
+  "advisorModel": "fable",
   "tui": "fullscreen",
   "voice": {
-    "enabled": true,
+    "enabled": false,
     "mode": "hold"
   },
   "skipDangerousModePermissionPrompt": true,
   "crossSessionInbound": "accept",
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true
+  "voiceEnabled": false
 }
