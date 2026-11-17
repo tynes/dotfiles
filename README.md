@@ -69,6 +69,20 @@ and the command to retry just those:
 Set `GITHUB_TOKEN` to avoid GitHub's anonymous API rate limit when installing on
 Linux.
 
+## macOS settings
+
+System settings (Dock on the left and auto-hidden, Finder column view, dark
+mode, scroll direction, etc.) live in `macos.sh`. Pass a hostname to pin the
+machine name, which also keeps it showing correctly in the prompt:
+
+```bash
+./macos.sh mac-mini-0
+```
+
+Without an argument it applies the settings and leaves the hostname alone.
+Use only lowercase letters, digits and `-`, and keep the name free of personal
+details: other devices on the network can see it.
+
 ## Remote access
 
 Plain `ssh` is configured in `config/ssh/config` (symlinked to `~/.ssh/config`),
