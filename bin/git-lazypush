@@ -7,7 +7,7 @@ if [ ! -z "$1" ] # checking if the commit message is present. If not then aborti
 then
   git add .
   git commit -m "$message"
-  git push origin $currentBranch
+  git push origin "$currentBranch"
 else
   echo "Commit message is not provided"
 fi

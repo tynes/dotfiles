@@ -8,4 +8,4 @@ then
   remoteBranch=$1
 fi
 echo "Showing diff between $remoteBranch origin/$remoteBranch"
-git diff $remoteBranch origin/$remoteBranch
+git diff "$remoteBranch" "origin/$remoteBranch"

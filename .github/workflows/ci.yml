@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install just and shellcheck
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            brew install just shellcheck
+          else
+            sudo apt-get update
+            sudo apt-get install -y just shellcheck
+          fi
+      - run: just ci

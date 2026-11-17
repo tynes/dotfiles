@@ -49,6 +49,7 @@ function psg() {
         echo "Usage: psg <pattern>" >&2
         return 1
     fi
+    # shellcheck disable=SC2009 # pgrep -f would hide the full ps columns
     ps -ef | grep -i "$1"
 }
 
@@ -67,7 +68,7 @@ alias lla='ls -la'
 alias l='ls'
 alias ..='cd ..'
 alias c='clear'
-function mkcd() { mkdir -p "$@" && cd "$_"; }
+function mkcd() { mkdir -p "$@" && cd "$_" || return; }
 function cdls() { cd "$@" && ls; }
 alias z='zoxide'
 # neovim
@@ -145,6 +146,7 @@ _ssh_hosts_from_config() {
     # Follow one level of Include. Patterns may be globs, may start with ~, and
     # are otherwise relative to ~/.ssh.
     while read -r _ pattern; do
+        # shellcheck disable=SC2088 # matching a literal ~ in ssh config
         case "$pattern" in
             "~/"*) pattern="$HOME/${pattern#\~/}" ;;
             /*)    ;;
@@ -183,6 +185,7 @@ _ssh_host_complete() {
         *@*) prefix="${cur%@*}@"; cur="${cur#*@}" ;;
     esac
 
+    # shellcheck disable=SC2207 # host names have no spaces
     COMPREPLY=($(compgen -P "$prefix" -W \
         "$({ _ssh_hosts_from_config; _ssh_hosts_from_tailscale; } | sort -u)" \
         -- "$cur"))
@@ -254,7 +257,7 @@ fi
 # =============================================================================
 
 # direnv
-if [ -f $(which direnv) ]; then
+if command -v direnv &> /dev/null; then
     eval "$(direnv hook bash)"
 fi
 
@@ -265,7 +268,7 @@ fi
 
 # git completion
 if command -v brew &> /dev/null; then
-    source $(brew --prefix)/etc/bash_completion.d/git-completion.bash
+    source "$(brew --prefix)/etc/bash_completion.d/git-completion.bash"
 elif [ -f /usr/share/bash-completion/completions/git ]; then
     source /usr/share/bash-completion/completions/git
 fi
