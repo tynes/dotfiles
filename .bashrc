@@ -3,4 +3,4 @@
 # Exit if not running interactively
 [[ $- != *i* ]] && return
 
-source $HOME/.bash/init.sh
+source "$HOME/.bash/init.sh"

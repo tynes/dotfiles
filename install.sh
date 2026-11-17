@@ -25,7 +25,7 @@ BREW_PACKAGES=(
     ripgrep fd tree go node pnpm bun python@3 uv gh jj jq just bitwarden-cli
     gcloud-cli awscli claude-code@latest codex nvimpager moor watch tailscale
     ghostty antigravity-cli gnupg orbstack openssh mosh starship worktrunk
-    rclone wget hcloud protobuf php fswatch
+    rclone wget hcloud protobuf php fswatch shellcheck
     superfile muse-code cloudflare-wrangler coreutils tor
     # Neovim: language servers (nvim-config/lsp/) and the tree-sitter CLI
     tree-sitter-cli lua-language-server pyright ruff typescript-language-server
@@ -35,7 +35,7 @@ APT_PACKAGES=(
     git tig tmux htop direnv ripgrep fd-find tree curl unzip ca-certificates
     python3 python3-pip python3-venv python-is-python3 build-essential scdoc
     jq procps gnupg openssh-client openssh-server mosh openssl libssl-dev
-    pkg-config wget php php-cli php-common bat tor
+    pkg-config wget php php-cli php-common bat tor shellcheck
 )
 
 # --- Steps --------------------------------------------------------------------

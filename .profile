@@ -25,7 +25,8 @@ fi
 # commit over ssh or inside tmux fails with "Inappropriate ioctl for device"
 # rather than prompting for the passphrase.
 if tty -s; then
-    export GPG_TTY=$(tty)
+    GPG_TTY=$(tty)
+    export GPG_TTY
 fi
 
 # PATH setup

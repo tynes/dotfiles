@@ -8,11 +8,24 @@ These are my personal dotfiles for setting up a consistent development environme
    ```bash
    git clone https://github.com/tynes/dotfiles.git ~/dotfiles
    ```
-2. Run the setup script:
+2. Install the tools and link the dotfiles:
    ```bash
    cd ~/dotfiles
-   ./setup.sh
+   just bootstrap    # or: ./install.sh && ./setup.sh, before just is installed
    ```
+
+Everything is driven from the `justfile`; run `just` to list the recipes:
+
+| Recipe | Does |
+| --- | --- |
+| `just bootstrap` | `install`, then `setup` |
+| `just install [steps...]` | install all tools, or only the named steps |
+| `just steps` | list the install steps for this OS |
+| `just setup` | symlink the dotfiles into `$HOME` |
+| `just plan` | show what `setup` would change, changing nothing |
+| `just lint` | shellcheck every tracked shell script |
+| `just test` | run `setup.sh` against a throwaway `$HOME` and check it is idempotent |
+| `just ci` | `lint` and `test`, as GitHub Actions runs them on Ubuntu and macOS |
 
 The setup script links each config in this repository into place (`~/.bashrc`,
 `~/.config/nvim`, `~/.ssh/config`, ...). The full list is `link_all` in
